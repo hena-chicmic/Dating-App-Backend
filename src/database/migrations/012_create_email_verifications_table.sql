@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS email_verifications (
     id SERIAL PRIMARY KEY,
 
-    user_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL UNIQUE,
 
     OTPtoken INTEGER NOT NULL,
 
