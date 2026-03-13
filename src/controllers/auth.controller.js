@@ -3,7 +3,13 @@ const authServices=require('../services/auth.service')
 
 const register=async(req,res,next)=>{
     try{
-        await authServices.register(req.body)
+        const { email, password, username, date_of_birth } = req.body;
+        
+        if (!email || !password || !username || !date_of_birth) {
+            return res.status(400).json({ message: "Email, password, username, and date_of_birth are required" });
+        }
+
+        await authServices.register({ email, password, username, date_of_birth });
 
         res.status(201).json({
             message:"user registered successfully.Please verify"
@@ -95,10 +101,8 @@ const refresh=async(req,res,next)=>{
 
 const logout=async(req,res,next)=>{
     try{
-        await authServices.logout(
-            req.user.user_id,
-            req.user.sessionId
-        )
+        const token = req.cookies.refreshToken;
+        await authServices.logout(token)
         res.clearCookie("refreshToken")
         res.json({
             message:"logout successful"
@@ -108,4 +112,28 @@ const logout=async(req,res,next)=>{
     }
 }
 
-module.exports={register,resendVerification,verifyEmail,login,forgotPassword,resetPassword,refresh,logout}
+const googleLogin = async (req, res, next) => {
+    try {
+        const { idToken } = req.body;
+        
+        if (!idToken) {
+            return res.status(400).json({ message: "Google idToken is required" });
+        }
+
+        const { accessToken, refreshToken, user } = await authServices.googleLogin(idToken);
+
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: false
+        });
+
+        res.status(200).json({
+            message: "Google login successful",
+            accessToken
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+module.exports = { register, resendVerification, verifyEmail, login, forgotPassword, resetPassword, refresh, logout, googleLogin }

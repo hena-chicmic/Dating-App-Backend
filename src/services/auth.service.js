@@ -4,10 +4,13 @@ const db = require('../config/db')
 const { hashPassword, comparePassword } = require('../utils/hash')
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateToken')
 const { verifyToken } = require('../utils/jwt')
+const { OAuth2Client } = require('google-auth-library')
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
 
 const register = async (data) => {
-    const { name, email, password } = data
+    const { username, email, password, date_of_birth } = data
 
     const existingUser = await db.query(
         'SELECT id from users where email=$1',
@@ -19,10 +22,10 @@ const register = async (data) => {
     const hashedPassword = await hashPassword(password)
 
     const result = await db.query(
-        `INSERT INTO users (name, email, password_hash)
-         VALUES ($1,$2,$3)
-         RETURNING id,name,email`,
-        [name, email, hashedPassword]
+        `INSERT INTO users (username, email, password_hash, date_of_birth)
+         VALUES ($1,$2,$3,$4)
+         RETURNING id,username,email`,
+        [username, email, hashedPassword, date_of_birth]
     )
 
     const user = result.rows[0]
@@ -204,12 +207,8 @@ const forgotPassword = async (email) => {
     const otp = Math.floor(100000 + Math.random() * 900000)
 
     await db.query(
-        `INSERT INTO email_verifications(user_id, otp_token)
-         VALUES($1,$2)
-         ON CONFLICT (user_id)
-         DO UPDATE SET
-            otp_token=$2,
-            expires_at=NOW()+INTERVAL '15 minutes'`,
+        `INSERT INTO password_resets(user_id, otp_token)
+         VALUES($1,$2)`,
         [user.id, otp]
     )
 
@@ -305,6 +304,65 @@ const logout = async (token) => {
     return true
 }
 
+const googleLogin = async (idToken) => {
+    // 1. Verify the Google Token
+    const ticket = await client.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID
+    })
+    
+    const payload = ticket.getPayload()
+    const { email, name } = payload
+
+    // 2. Check if user exists
+    const existingUser = await db.query(
+        'SELECT id, username, email, is_verified FROM users WHERE email=$1',
+        [email]
+    )
+
+    let user;
+
+    if (existingUser.rows.length > 0) {
+        user = existingUser.rows[0];
+    } else {
+        // 3. Register New User with Random Password
+        const randomPassword = crypto.randomBytes(32).toString('hex')
+        const hashedPassword = await hashPassword(randomPassword)
+        
+        // Use google name as base username, removing spaces.
+        const baseUsername = name ? name.replace(/\s+/g, '').toLowerCase() : 'user'
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000)
+        const uniqueUsername = `${baseUsername}${randomSuffix}`
+
+        // Dummy dob since Google doesn't provide it easily. User modifies it later.
+        const dummyDob = '2000-01-01'
+
+        const result = await db.query(
+            `INSERT INTO users (username, email, password_hash, date_of_birth, is_verified)
+             VALUES ($1,$2,$3,$4,$5)
+             RETURNING id, username, email`,
+            [uniqueUsername, email, hashedPassword, dummyDob, true] // is_verified is TRUE because Google verified them
+        )
+        user = result.rows[0]
+    }
+
+    // 4. Generate Tokens
+    const accessToken = generateAccessToken({ user_id: user.id })
+    const refreshToken = generateRefreshToken({ user_id: user.id, type: "refresh" })
+
+    await db.query(
+        `INSERT INTO refresh_tokens (user_id, token, expires_at)
+         VALUES ($1, $2, NOW() + INTERVAL '7 days')`,
+        [user.id, refreshToken]
+    )
+
+    return {
+        user,
+        accessToken,
+        refreshToken
+    }
+}
+
 module.exports = {
     register,
     verifyEmail,
@@ -313,7 +371,8 @@ module.exports = {
     forgotPassword,
     resetPassword,
     refresh,
-    logout
+    logout,
+    googleLogin
 }
 
 
