@@ -76,9 +76,6 @@ const updateMyProfile = async (userId, profileData) => {
             ]
         );
 
-        // Removed the incorrect 'interests' table update here. 
-        // Interests should be updated via updateMyInterests.
-
         await client.query('COMMIT');
         return { success: true };
     } catch (error) {
