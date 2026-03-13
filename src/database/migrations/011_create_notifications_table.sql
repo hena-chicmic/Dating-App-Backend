@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     user_id INTEGER NOT NULL,
 
     type VARCHAR(30) NOT NULL,
+    
     reference_id INTEGER,
 
     message TEXT,
