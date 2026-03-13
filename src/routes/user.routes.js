@@ -6,8 +6,6 @@ const authMiddleware = require("../middleware/auth.middleware");
 
 router.use(authMiddleware);
 
-
-
 // Get the logged-in user's own profile (includes bio, preferences, height, location)
 router.get("/profile", userController.getMyProfile);
 
@@ -18,7 +16,7 @@ router.put("/profile", userController.updateMyProfile);
 router.get("/media", userController.getMyMedia);
 
 // Upload a new photo/video
-router.post("/media", userController.uploadMedia);
+router.post("/media",upload.single('media'), userController.uploadMedia);
 
 // Delete a specific photo/video
 router.delete("/media/:mediaId", userController.deleteMedia);

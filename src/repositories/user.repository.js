@@ -98,8 +98,6 @@ const getMyMedia=async(userId)=>{
 
 const uploadMedia = async (userId, mediaData) => {
     const { media_url, media_type = 'image' } = mediaData;
-
-    // Auto-set as primary if this is the user's FIRST photo
     const existingMediaResult = await db.query(
         `SELECT COUNT(*) FROM user_media WHERE user_id = $1`,
         [userId]
@@ -161,10 +159,8 @@ const updateMyInterests = async (userId, interestIds) => {
     try {
         await client.query('BEGIN');
         
-        // 1. Delete all old interests
         await client.query(`DELETE FROM user_interests WHERE user_id = $1`, [userId]);
         
-        // 2. Insert new interests
         if (interestIds && interestIds.length > 0) {
             // Build the multi-insert query dynamically: ($1, $2), ($1, $3), etc.
             const values = [];
@@ -232,8 +228,6 @@ const deactivateAccount = async (userId) => {
 };
 
 const deleteAccount = async (userId) => {
-    // ON DELETE CASCADE on the users table will automatically delete 
-    // user_profiles, user_media, user_interests, interactions, and matches!
     const query = `DELETE FROM users WHERE id = $1`;
     await db.query(query, [userId]);
     return { success: true };
