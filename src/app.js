@@ -4,7 +4,8 @@ const cookieParser = require('cookie-parser');
 const errorHandler = require('./middleware/error.middleware');
 
 const authRoutes = require('./routes/auth.routes');
-// const userRoutes = require('./routes/user.routes');
+const discoveryRoutes = require('./routes/discovery.routes');
+const matchRoutes = require('./routes/match.routes');
 
 const app = express();
 
@@ -18,6 +19,8 @@ app.use(cookieParser());
 
 // Mount Routes
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/discovery', discoveryRoutes);
+app.use('/api/v1/matches', matchRoutes);
 
 // centralized error handler
 app.use(errorHandler);
