@@ -295,13 +295,13 @@ const resetPassword = async (newPassword, token) => {
 
 const logout = async (token) => {
     if (!token) return;
-    
+
     await db.query(
         `DELETE FROM refresh_tokens
          WHERE token=$1`,
         [token]
     )
-    
+
     return true
 }
 
