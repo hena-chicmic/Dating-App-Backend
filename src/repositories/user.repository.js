@@ -100,14 +100,21 @@ const getMyMedia=async(userId)=>{
 }
 
 const uploadMedia = async (userId, mediaData) => {
-    // MediaData contains media_url and potentially media_type
-    const { media_url, media_type = 'image', is_primary = false } = mediaData;
+    const { media_url, media_type = 'image' } = mediaData;
+
+    // Auto-set as primary if this is the user's FIRST photo
+    const existingMediaResult = await db.query(
+        `SELECT COUNT(*) FROM user_media WHERE user_id = $1`,
+        [userId]
+    );
+    const isFirstPhoto = parseInt(existingMediaResult.rows[0].count) === 0;
+
     const query = `
         INSERT INTO user_media (user_id, media_url, media_type, is_primary)
         VALUES ($1, $2, $3, $4)
         RETURNING id, media_url, media_type, is_primary, created_at
     `;
-    const result = await db.query(query, [userId, media_url, media_type, is_primary]);
+    const result = await db.query(query, [userId, media_url, media_type, isFirstPhoto]);
     return result.rows[0];
 };
 
