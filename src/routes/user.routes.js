@@ -2,8 +2,11 @@ const express = require("express");
 const router = express.Router();
 const userController = require("../controllers/user.controller");
 const authMiddleware = require("../middleware/auth.middleware");
+const multer = require("multer");
 
-
+// Configure a basic multer memory storage to prevent `upload is not defined` crashes.
+// TODO: Replace with proper S3/Cloudinary storage in the future.
+const upload = multer({ storage: multer.memoryStorage() });
 router.use(authMiddleware);
 
 // Get the logged-in user's own profile (includes bio, preferences, height, location)
@@ -16,7 +19,7 @@ router.put("/profile", userController.updateMyProfile);
 router.get("/media", userController.getMyMedia);
 
 // Upload a new photo/video
-router.post("/media",upload.single('media'), userController.uploadMedia);
+router.post("/media", upload.single('media'), userController.uploadMedia);
 
 // Delete a specific photo/video
 router.delete("/media/:mediaId", userController.deleteMedia);

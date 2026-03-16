@@ -6,7 +6,4 @@ const isAuthenticated = require('../middleware/auth.middleware');
 // Fetch 10 compatible, unseen profiles
 router.get('/feed', isAuthenticated, getRecommendations);
 
-// Record a 'like' or 'pass' on a profile
-router.post('/swipe', isAuthenticated, swipe);
-
 module.exports = router;

@@ -80,21 +80,6 @@ class DiscoveryRepository {
         const result = await db.query(query, values);
         return result.rows;
     }
-
-    /**
-     * Records a swipe (like or dislike).
-     */
-    async saveInteraction(userId, targetUserId, action) {
-        const query = `
-            INSERT INTO interactions (user_id, target_user_id, action)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (user_id, target_user_id) 
-            DO UPDATE SET action = EXCLUDED.action, created_at = CURRENT_TIMESTAMP
-            RETURNING *;
-        `;
-        const result = await db.query(query, [userId, targetUserId, action]);
-        return result.rows[0];
-    }
 }
 
 module.exports = new DiscoveryRepository();
