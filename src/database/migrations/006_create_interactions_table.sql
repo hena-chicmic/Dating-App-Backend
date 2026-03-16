@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS interactions (
         UNIQUE(user_id, target_user_id)
 );
 
-CREATE INDEX idx_interactions_user
+CREATE INDEX IF NOT EXISTS idx_interactions_user
 ON interactions(user_id);
 
-CREATE INDEX idx_interactions_target
+CREATE INDEX IF NOT EXISTS idx_interactions_target
 ON interactions(target_user_id);
