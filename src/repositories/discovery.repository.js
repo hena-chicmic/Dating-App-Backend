@@ -47,21 +47,34 @@ class DiscoveryRepository {
             LEFT JOIN user_interests ui2 ON ui1.interest_id = ui2.interest_id AND ui2.user_id = $1
             WHERE u.id != $1
             AND u.gender = $2
-            AND EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN $3 AND $4
-            -- Ensure they actually HAVE a location, and it's within $9 Kilometers
+            -- Relaxed Age: Up to 5 years outside their preference
+            AND EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN ($3 - 5) AND ($4 + 5)
             AND p.latitude IS NOT NULL 
             AND p.longitude IS NOT NULL
+            -- Relaxed Distance: Hard cap at 100km
             AND (6371 * acos(
                     cos(radians($7)) * cos(radians(p.latitude)) * 
                     cos(radians(p.longitude) - radians($8)) + 
                     sin(radians($7)) * sin(radians(p.latitude))
-                )) <= $9
+                )) <= 100
             AND NOT EXISTS (
                 SELECT 1 FROM interactions i 
                 WHERE i.user_id = $1 AND i.target_user_id = u.id
             )
             GROUP BY u.id, p.profile_photo_url, p.location_city, p.location_country, p.latitude, p.longitude
-            ORDER BY common_interests DESC, distance_km ASC, u.created_at DESC
+            ORDER BY 
+                -- Tier 1: Prioritize users within the preferred distance ($9)
+                CASE WHEN (6371 * acos(
+                    cos(radians($7)) * cos(radians(p.latitude)) * 
+                    cos(radians(p.longitude) - radians($8)) + 
+                    sin(radians($7)) * sin(radians(p.latitude))
+                )) <= $9 THEN 0 ELSE 1 END ASC,
+                -- Tier 2: Prioritize users within the exact preferred age range
+                CASE WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN $3 AND $4 THEN 0 ELSE 1 END ASC,
+                -- Normal sorting
+                common_interests DESC, 
+                distance_km ASC, 
+                u.created_at DESC
             LIMIT $5 OFFSET $6
         `;
 
