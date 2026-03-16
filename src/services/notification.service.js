@@ -20,5 +20,6 @@ const createNotifications=async(userId,type,reference_id,message)=>{
 module.exports={
     getNotifications,
     markRead,
-    markAllRead
+    markAllRead,
+    createNotifications
 }
