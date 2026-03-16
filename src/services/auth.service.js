@@ -151,7 +151,7 @@ const login = async (data) => {
     const { email, password } = data
 
     const result = await db.query(
-        `SELECT id,name,email,password_hash,is_verified
+        `SELECT id,username,email,password_hash,is_verified
          FROM users
          WHERE email=$1`,
         [email]
