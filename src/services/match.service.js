@@ -1,6 +1,7 @@
 const matchRepository = require('../repositories/match.repository');
 const { getIO } = require('../config/socket');
 const onlineUsers = require('../socket/online-users');
+const notificationService = require('./notification.service');
 
 const checkAndCreateMatch = async (userId, targetUserId) => {
    
@@ -22,6 +23,14 @@ const checkAndCreateMatch = async (userId, targetUserId) => {
             } catch (err) {
                 
                 console.error('Socket emit error on new match:', err.message);
+            }
+
+            // Also create DB notifications for both users
+            try {
+                await notificationService.createNotifications(userId, 'new_match', newMatch.id, "You have a new match!");
+                await notificationService.createNotifications(targetUserId, 'new_match', newMatch.id, "You have a new match!");
+            } catch (err) {
+                console.error('Notification creation error on new match:', err.message);
             }
         }
         return newMatch;

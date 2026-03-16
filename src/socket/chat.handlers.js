@@ -1,5 +1,7 @@
 const messageService = require('../services/message.service');
 const onlineUsers = require('./online-users');
+const notificationService = require('../services/notification.service');
+const matchRepository = require('../repositories/match.repository');
 
 module.exports = (socket, io) => {
 
@@ -19,6 +21,17 @@ module.exports = (socket, io) => {
             const savedMessage = await messageService.sendMessage(matchId, senderId, text, mediaUrl, mediaType);
 
             io.to(`match_${matchId}`).emit('receive_message', savedMessage);
+
+           
+            try {
+                
+                const match = (await matchRepository.fetchUserMatches(senderId)).find(m => m.match_id === parseInt(matchId));
+                if (match) {
+                    await notificationService.createNotifications(match.user_id, 'new_message', matchId, `New message from ${match.username}`);
+                }
+            } catch (err) {
+                console.error('Notification error on send_message:', err.message);
+            }
 
         } catch (err) {
             console.error('send_message error:', err.message);

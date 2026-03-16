@@ -13,7 +13,7 @@ const markAllRead=async(userId)=>{
 }
 
 const createNotifications=async(userId,type,reference_id,message)=>{
-    return await notificationRepository.createNotifications(userId)
+    return await notificationRepository.createNotifications(userId, type, reference_id, message)
 }
 
 
