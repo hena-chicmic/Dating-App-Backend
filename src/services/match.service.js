@@ -1,16 +1,37 @@
 const matchRepository = require('../repositories/match.repository');
+const { getIO } = require('../config/socket');
+const onlineUsers = require('../socket/online-users');
+const notificationService = require('./notification.service');
 
 const checkAndCreateMatch = async (userId, targetUserId) => {
-    // 1. Check if the target user ALREADY liked the current user
+   
     const isMutual = await matchRepository.checkMutualLike(userId, targetUserId);
 
-    // 2. If mutual, create the match!
     if (isMutual) {
         const newMatch = await matchRepository.createMatch(userId, targetUserId);
-        
+
         if (newMatch) {
-            // TODO: In the future, trigger the NotificationService here!
-            // console.log(`IT'S A MATCH! Users ${userId} and ${targetUserId}`);
+            try {
+                const io = getIO();
+                const payload = { matchId: newMatch.id, matchedWith: null };
+
+                const socketA = onlineUsers.get(parseInt(userId));
+                if (socketA) io.to(socketA).emit('new_match', { ...payload, matchedWith: targetUserId });
+
+                const socketB = onlineUsers.get(parseInt(targetUserId));
+                if (socketB) io.to(socketB).emit('new_match', { ...payload, matchedWith: userId });
+            } catch (err) {
+                
+                console.error('Socket emit error on new match:', err.message);
+            }
+
+            // Also create DB notifications for both users
+            try {
+                await notificationService.createNotifications(userId, 'new_match', newMatch.id, "You have a new match!");
+                await notificationService.createNotifications(targetUserId, 'new_match', newMatch.id, "You have a new match!");
+            } catch (err) {
+                console.error('Notification creation error on new match:', err.message);
+            }
         }
         return newMatch;
     }
