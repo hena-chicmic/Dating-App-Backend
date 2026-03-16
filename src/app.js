@@ -6,6 +6,7 @@ const errorHandler = require('./middleware/error.middleware');
 const authRoutes = require('./routes/auth.routes');
 const discoveryRoutes = require('./routes/discovery.routes');
 const matchRoutes = require('./routes/match.routes');
+const interactionRoutes = require('./routes/interaction.routes');
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use(cookieParser());
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/discovery', discoveryRoutes);
 app.use('/api/v1/matches', matchRoutes);
+app.use('/api/v1/interactions', interactionRoutes);
 
 // centralized error handler
 app.use(errorHandler);

@@ -5,6 +5,7 @@ const { hashPassword, comparePassword } = require('../utils/hash')
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateToken')
 const { verifyToken } = require('../utils/jwt')
 const { OAuth2Client } = require('google-auth-library')
+const emailService = require('./email.service')
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
@@ -38,7 +39,8 @@ const register = async (data) => {
         [user.id, otp]
     )
 
-    console.log("Verification OTP:", otp)
+    // Send the verification email to the user asynchronously
+    emailService.sendVerificationEmail(user.email, otp).catch(err => console.error("Email failed to send", err));
 
     const accessToken = generateAccessToken({
         user_id: user.id
@@ -112,7 +114,7 @@ const resendVerification = async (userId) => {
 
 
     const userResult = await db.query(
-        `SELECT id, is_verified FROM users WHERE id=$1`,
+        `SELECT id, email, is_verified FROM users WHERE id=$1`,
         [userId]
     )
 
@@ -141,7 +143,8 @@ const resendVerification = async (userId) => {
     )
 
 
-    console.log("New verification OTP:", otp)
+    // Dispatch the email
+    emailService.sendVerificationEmail(user.email, otp).catch(err => console.error("Resend email failed", err));
 
     return true
 }
@@ -212,7 +215,8 @@ const forgotPassword = async (email) => {
         [user.id, otp]
     )
 
-    console.log("Reset OTP:", otp)
+    // Dispatch the password reset email
+    emailService.sendPasswordResetEmail(email, otp).catch(err => console.error("Reset email failed", err));
 }
 
 

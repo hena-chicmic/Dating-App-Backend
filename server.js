@@ -1,4 +1,4 @@
-require('./config/env');
+require('./src/config/env');
 const app = require('./src/app');
 const pool = require('./src/config/db');
 
