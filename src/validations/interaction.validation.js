@@ -1,7 +1,7 @@
 const Joi = require('joi');
 
 const swipeSchema = Joi.object({
-    targetUserId: Joi.string().required().messages({
+    targetUserId: Joi.number().integer().required().messages({
         'any.required': 'Target user ID is required'
     }),
     action: Joi.string().valid('like', 'dislike').required().messages({

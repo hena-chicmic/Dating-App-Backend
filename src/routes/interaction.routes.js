@@ -31,7 +31,7 @@ const { swipeSchema } = require('../validations/interaction.validation');
  *               - action
  *             properties:
  *               targetUserId:
- *                 type: string
+ *                 type: integer
  *               action:
  *                 type: string
  *                 enum: [like, dislike]

@@ -42,7 +42,22 @@ const updatePreferencesSchema = Joi.object({
     return value;
 });
 
+const updateInterestsSchema = Joi.object({
+    interestIds: Joi.array().items(Joi.number().integer()).required()
+});
+
+const mediaIdParamSchema = Joi.object({
+    mediaId: Joi.string().required()
+});
+
+const targetUserIdParamSchema = Joi.object({
+    targetUserId: Joi.number().integer().required()
+});
+
 module.exports = {
     updateProfileSchema,
-    updatePreferencesSchema
+    updatePreferencesSchema,
+    updateInterestsSchema,
+    mediaIdParamSchema,
+    targetUserIdParamSchema
 };

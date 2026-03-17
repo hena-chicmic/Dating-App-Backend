@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getRecommendations, swipe } = require('../controllers/discovery.controller');
+const { getRecommendations } = require('../controllers/discovery.controller');
 const isAuthenticated = require('../middleware/auth.middleware');
 
 /**

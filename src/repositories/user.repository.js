@@ -288,15 +288,21 @@ const getUserProfile = async (requestingUserId, targetUserId) => {
 };
 
 const deactivateAccount = async (userId) => {
-    // Depending on schema, maybe there is an is_active column. 
-    // Usually, dating apps soft-delete users. If no column exists, we might need a migration for it.
-    // For now, let's assume dropping profile data or setting a flag.
-    // Let's implement a HARD delete since deleteAccount is also here, so assuming deactivate might just hide the profile.
-    // Since we don't have an is_active column in `users` currently (based on previous schemas), we'll do a basic update.
-    // To cleanly build this, we'll run a query that deletes their interactions so they disappear from feeds.
-    const query = `DELETE FROM interactions WHERE user_id = $1 OR target_user_id = $1`;
-    await db.query(query, [userId]);
-    return { success: true };
+    const client = await db.connect();
+    try {
+        await client.query('BEGIN');
+        
+        await client.query(`UPDATE users SET is_active = FALSE WHERE id = $1`, [userId]);
+        await client.query(`DELETE FROM interactions WHERE user_id = $1 OR target_user_id = $1`, [userId]);
+        
+        await client.query('COMMIT');
+        return { success: true };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 };
 
 const deleteAccount = async (userId) => {

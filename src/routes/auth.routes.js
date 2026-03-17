@@ -5,7 +5,7 @@ const { register, resendVerification, verifyEmail, login, forgotPassword, resetP
     require('../controllers/auth.controller')
 const isAuthenticated = require('../middleware/auth.middleware')
 const validate = require('../middleware/validation.middleware')
-const { registerSchema, loginSchema, verifyEmailSchema, requestPasswordResetSchema, resetPasswordSchema } = require('../validations/auth.validation')
+const { registerSchema, loginSchema, verifyEmailSchema, requestPasswordResetSchema, resetPasswordSchema, resendVerificationSchema, googleLoginSchema } = require('../validations/auth.validation')
 
 /**
  * @swagger
@@ -91,6 +91,12 @@ router.post('/login', validate(loginSchema), login)
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: cookie
+ *         name: refreshToken
+ *         required: true
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Successfully logged out
@@ -148,7 +154,7 @@ router.post('/verify-email', validate(verifyEmailSchema), verifyEmail)
  *       200:
  *         description: Verification email sent
  */
-router.post('/resend-verification', resendVerification)
+router.post('/resend-verification', validate(resendVerificationSchema), resendVerification)
 
 /**
  * @swagger
@@ -171,7 +177,7 @@ router.post('/resend-verification', resendVerification)
  *       200:
  *         description: Login successful
  */
-router.post('/google', googleLogin)
+router.post('/google', validate(googleLoginSchema), googleLogin)
 
 /**
  * @swagger
@@ -179,17 +185,12 @@ router.post('/google', googleLogin)
  *   post:
  *     summary: Refresh access token
  *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - refreshToken
- *             properties:
- *               refreshToken:
- *                 type: string
+ *     parameters:
+ *       - in: cookie
+ *         name: refreshToken
+ *         required: true
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Token refreshed

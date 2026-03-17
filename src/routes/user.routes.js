@@ -3,7 +3,7 @@ const router = express.Router();
 const userController = require("../controllers/user.controller");
 const authMiddleware = require("../middleware/auth.middleware");
 const validate = require('../middleware/validation.middleware');
-const { updateProfileSchema, updatePreferencesSchema } = require('../validations/user.validation');
+const { updateProfileSchema, updatePreferencesSchema, updateInterestsSchema, mediaIdParamSchema, targetUserIdParamSchema } = require('../validations/user.validation');
 const upload = require("../middleware/multer.middleware");
 
 router.use(authMiddleware);
@@ -50,11 +50,21 @@ router.get("/profile", userController.getMyProfile);
  *               gender:
  *                 type: string
  *                 enum: [male, female, non-binary, other]
+ *               interested_in:
+ *                 type: string
+ *                 enum: [male, female, non-binary, everyone]
+ *               min_preferred_age:
+ *                 type: integer
+ *               max_preferred_age:
+ *                 type: integer
  *               height:
  *                 type: number
  *                 minimum: 50
  *                 maximum: 300
- *               locationCity:
+ *               location_city:
+ *                 type: string
+ *                 maxLength: 100
+ *               location_country:
  *                 type: string
  *                 maxLength: 100
  *               latitude:
@@ -129,7 +139,7 @@ router.post("/media", upload.single('media'), userController.uploadMedia);
  *       200:
  *         description: Media deleted successfully
  */
-router.delete("/media/:mediaId", userController.deleteMedia);
+router.delete("/media/:mediaId", validate(mediaIdParamSchema, 'params'), userController.deleteMedia);
 
 /**
  * @swagger
@@ -149,7 +159,7 @@ router.delete("/media/:mediaId", userController.deleteMedia);
  *       200:
  *         description: Set as primary successfully
  */
-router.put("/media/:mediaId/primary", userController.setPrimaryMedia);
+router.put("/media/:mediaId/primary", validate(mediaIdParamSchema, 'params'), userController.setPrimaryMedia);
 
 /**
  * @swagger
@@ -204,7 +214,7 @@ router.get("/my-interests", userController.getMyInterests);
  *       200:
  *         description: Interests updated
  */
-router.put("/my-interests", userController.updateMyInterests);
+router.put("/my-interests", validate(updateInterestsSchema), userController.updateMyInterests);
 
 /**
  * @swagger
@@ -224,7 +234,7 @@ router.put("/my-interests", userController.updateMyInterests);
  *       200:
  *         description: Profile retrieved
  */
-router.get("/:targetUserId", userController.getUserProfile);
+router.get("/:targetUserId", validate(targetUserIdParamSchema, 'params'), userController.getUserProfile);
 
 /**
  * @swagger

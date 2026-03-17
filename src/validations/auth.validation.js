@@ -50,10 +50,20 @@ const resetPasswordSchema = Joi.object({
     })
 });
 
+const resendVerificationSchema = Joi.object({
+    email: Joi.string().email().required()
+});
+
+const googleLoginSchema = Joi.object({
+    idToken: Joi.string().required()
+});
+
 module.exports = {
     registerSchema,
     loginSchema,
     verifyEmailSchema,
     requestPasswordResetSchema,
-    resetPasswordSchema
+    resetPasswordSchema,
+    resendVerificationSchema,
+    googleLoginSchema
 };

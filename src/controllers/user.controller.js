@@ -147,9 +147,9 @@ const getMyInterests = async (req, res, next) => {
 const updateMyInterests = async (req, res, next) => {
   try {
     const userId = req.user.user_id;
-    const { interestsIds } = req.body; // Expecting an array of interest IDs
+    const { interestIds } = req.body; // Expecting an array of interest IDs
 
-    const updatedInterests = await userServices.updateMyInterests(userId, interestsIds);
+    const updatedInterests = await userServices.updateMyInterests(userId, interestIds);
 
     res.status(200).json({
       success: true,
