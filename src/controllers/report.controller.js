@@ -3,7 +3,7 @@ const reportService = require('../services/report.service');
 
 const reportUser = async (req, res, next) => {
     try {
-        const reporterId = req.user.id;
+        const reporterId = req.user.user_id;
         const { reportedUserId, reason, description } = req.body;
 
         const report = await reportService.reportUser(reporterId, reportedUserId, reason, description);
@@ -35,7 +35,7 @@ const getReport = async (req, res, next) => {
 
 const getMyReports = async (req, res, next) => {
     try {
-        const userId = req.user.id;
+        const userId = req.user.user_id;
         const reports = await reportService.getMyReports(userId);
 
         res.status(200).json({

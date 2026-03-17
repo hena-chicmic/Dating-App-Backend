@@ -14,6 +14,16 @@ const options = {
         description: 'Local Development Server',
       },
     ],
+    tags: [
+      { name: 'Auth', description: 'Authentication operations' },
+      { name: 'Users', description: 'User profile and media operations' },
+      { name: 'Discovery', description: 'Profile discovery and recommendations' },
+      { name: 'Interactions', description: 'User swipe and matching operations' },
+      { name: 'Matches', description: 'User match operations' },
+      { name: 'Notifications', description: 'User notification operations' },
+      { name: 'Messages', description: 'User messaging operations' },
+      { name: 'Reports', description: 'User reporting operations' }
+    ],
     components: {
       securitySchemes: {
         bearerAuth: {

@@ -3,7 +3,7 @@ const notificationService=require('../services/notification.service')
 
 const getNotifications=async(req,res,next)=>{
     try{
-        const userId=req.user.userId
+        const userId=req.user.user_id
        
         const notification=await notificationService.getNotifications(userId)
         res.status(200).json({
@@ -18,8 +18,8 @@ const getNotifications=async(req,res,next)=>{
 
 const markRead=async(req,res,next)=>{
     try{
-        const userId=req.user.userId
-        const notification_id=req.params
+        const userId=req.user.user_id
+        const { notification_id }=req.params
         const result=await notificationService.markRead(userId,notification_id)
         res.status(200).json({
             message:"notification marked as read"
@@ -31,7 +31,7 @@ const markRead=async(req,res,next)=>{
 
 const markAllRead=async(req,res,next)=>{
     try{
-        const userId=req.user.userId
+        const userId=req.user.user_id
         const result=await notificationService.markAllRead(userId)
         res.status(200).json({
             message:"all notifications marked read"

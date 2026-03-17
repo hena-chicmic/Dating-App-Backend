@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS reports (
     CONSTRAINT check_not_self_report CHECK (reporter_id <> reported_user_id),
 
     CONSTRAINT check_status
-        CHECK (status IN ('pending','reviewed','resolved'))
+        CHECK (status IN ('pending','reviewed','resolved')),
 
     CONSTRAINT check_reason
         CHECK(reason IN (
