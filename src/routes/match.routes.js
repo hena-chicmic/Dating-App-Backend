@@ -3,8 +3,6 @@ const router = express.Router();
 const { getUserMatches } = require('../controllers/match.controller');
 const isAuthenticated = require('../middleware/auth.middleware');
 
-<<<<<<< HEAD
-=======
 /**
  * @swagger
  * tags:
@@ -24,7 +22,7 @@ const isAuthenticated = require('../middleware/auth.middleware');
  *       200:
  *         description: List of matches retrieved successfully
  */
->>>>>>> 7cf74c9 (swagger and media upload done)
+
 router.get('/', isAuthenticated, getUserMatches);
 
 module.exports = router;

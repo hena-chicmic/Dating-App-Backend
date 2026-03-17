@@ -4,7 +4,7 @@ const cookieParser = require('cookie-parser');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const errorHandler = require('./middleware/error.middleware');
-
+const rateLimiter=require('./middleware/rateLimit.middleware')
 const authRoutes = require('./routes/auth.routes');
 const discoveryRoutes = require('./routes/discovery.routes');
 const matchRoutes = require('./routes/match.routes');
@@ -26,7 +26,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-
+app.use(rateLimiter)
 
 
 
