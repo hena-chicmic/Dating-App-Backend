@@ -16,7 +16,7 @@ const getChatHistory = async (req, res, next) => {
 const markRead = async (req, res, next) => {
     try {
         const { matchId } = req.params;
-        const receiverId = req.user.id;
+        const receiverId = req.user.user_id;
 
         await messageService.markRead(matchId, receiverId);
         res.status(200).json({ success: true, message: 'Messages marked as read.' });
@@ -28,7 +28,7 @@ const markRead = async (req, res, next) => {
 const deleteMessage = async (req, res, next) => {
     try {
         const { messageId } = req.params;
-        const senderId = req.user.id;
+        const senderId = req.user.user_id;
 
         const deleted = await messageService.deleteMessage(messageId, senderId);
         res.status(200).json({ success: true, data: deleted });
