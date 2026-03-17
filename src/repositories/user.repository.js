@@ -21,7 +21,12 @@ const getMyProfile = async (userId) => {
             p.location_country,
             p.latitude,
             p.longitude,
-            p.profile_photo_url
+            (
+                SELECT media_url
+                FROM user_media m
+                WHERE m.user_id = u.id AND m.is_primary = true
+                LIMIT 1
+            ) AS profile_photo_url
         FROM users u
         LEFT JOIN user_profiles p ON u.id = p.user_id
         WHERE u.id = $1

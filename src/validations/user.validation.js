@@ -1,18 +1,29 @@
 const Joi = require('joi');
 
 const updateProfileSchema = Joi.object({
-    bio: Joi.string().max(500).allow('', null).messages({
-        'string.max': 'Bio cannot exceed 500 characters'
-    }),
-    gender: Joi.string().valid('male', 'female', 'non-binary', 'other').required().messages({
-        'any.only': 'Gender must be male, female, non-binary, or other'
-    }),
-    height: Joi.number().min(50).max(300).allow(null).messages({
-        'number.min': 'Height must be at least 50 cm',
-        'number.max': 'Height cannot exceed 300 cm'
-    }),
-    location_city: Joi.string().max(100).allow('', null),
-    location_country: Joi.string().max(100).allow('', null),
+    bio: Joi.string().max(500).allow('', null),
+
+    gender: Joi.string()
+        .valid('male', 'female', 'non-binary', 'other')
+        .required(),
+
+    interested_in: Joi.string()
+        .valid('male', 'female', 'non-binary', 'everyone')
+        .required(),
+
+    min_preferred_age: Joi.number().integer().min(18).allow(null),
+    max_preferred_age: Joi.number().integer().min(18).allow(null),
+
+    height: Joi.number().min(50).max(300).allow(null),
+
+    location_city: Joi.string()
+        .max(100)
+        .required(),
+
+    location_country: Joi.string()
+        .max(100)
+        .required(),
+
     latitude: Joi.number().min(-90).max(90).allow(null),
     longitude: Joi.number().min(-180).max(180).allow(null)
 });
