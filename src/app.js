@@ -8,6 +8,7 @@ const discoveryRoutes = require('./routes/discovery.routes');
 const matchRoutes = require('./routes/match.routes');
 const messageRoutes = require('./routes/message.routes');
 const notificationRoutes = require('./routes/notification.routes');
+const reportRoutes = require('./routes/report.routes');
 
 const app = express();
 
@@ -19,14 +20,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Mount Routes
+
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/discovery', discoveryRoutes);
 app.use('/api/v1/matches', matchRoutes);
 app.use('/api/v1/messages', messageRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/reports', reportRoutes);
 
-// centralized error handler
 app.use(errorHandler);
+
 
 module.exports = app;
