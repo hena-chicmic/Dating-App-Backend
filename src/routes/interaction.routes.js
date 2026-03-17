@@ -4,6 +4,7 @@ const { swipe, getSentLikes, getReceivedLikes } = require('../controllers/intera
 const isAuthenticated = require('../middleware/auth.middleware');
 const validate = require('../middleware/validation.middleware');
 const { swipeSchema } = require('../validations/interaction.validation');
+const { swipeLimiter } = require('../middleware/rateLimiter.middleware');
 
 /**
  * @swagger
@@ -41,7 +42,7 @@ const { swipeSchema } = require('../validations/interaction.validation');
  *       400:
  *         description: Validation or business logic error
  */
-router.post('/swipe', isAuthenticated, validate(swipeSchema), swipe);
+router.post('/swipe', isAuthenticated, swipeLimiter, validate(swipeSchema), swipe);
 
 /**
  * @swagger

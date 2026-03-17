@@ -4,6 +4,7 @@ const cookieParser = require('cookie-parser');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const errorHandler = require('./middleware/error.middleware');
+const { globalLimiter } = require('./middleware/rateLimiter.middleware');
 
 const authRoutes = require('./routes/auth.routes');
 const discoveryRoutes = require('./routes/discovery.routes');
@@ -26,6 +27,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Apply global rate limiter to all API routes
+app.use('/api/v1', globalLimiter);
 
 
 
