@@ -1,4 +1,4 @@
-const { userRepository } = require('../repositories/user.repository');
+const userRepository = require('../repositories/user.repository');
 
 const getMyProfile = async (userId) => {
     return await userRepository.getMyProfile(userId);

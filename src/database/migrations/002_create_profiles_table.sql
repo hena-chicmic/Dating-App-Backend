@@ -24,5 +24,5 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_user_profiles_user_id
+CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id
 ON user_profiles(user_id);

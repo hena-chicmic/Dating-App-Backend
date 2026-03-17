@@ -23,5 +23,5 @@ CREATE TABLE IF NOT EXISTS user_media (
         ON DELETE CASCADE
 );
 
-CREATE INDEX idx_user_media_user
+CREATE INDEX IF NOT EXISTS idx_user_media_user
 ON user_media(user_id);

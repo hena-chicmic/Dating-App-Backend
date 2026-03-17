@@ -22,8 +22,8 @@ CREATE TABLE IF NOT EXISTS user_interests (
     PRIMARY KEY (user_id, interest_id)
 );
 
-CREATE INDEX idx_user_interests_user
+CREATE INDEX IF NOT EXISTS idx_user_interests_user
 ON user_interests(user_id);
 
-CREATE INDEX idx_user_interests_interest
+CREATE INDEX IF NOT EXISTS idx_user_interests_interest
 ON user_interests(interest_id);

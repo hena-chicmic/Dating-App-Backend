@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS matches (
 );
 
     CREATE INDEX idx_matches_user1
-    ON matches((user1_id))
+    ON matches(user1_id);
 
     CREATE INDEX idx_matches_user2
-    ON matches((user2_id))
+    ON matches(user2_id);

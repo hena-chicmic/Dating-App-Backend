@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS messages (
         ON DELETE CASCADE
 );
 
-CREATE INDEX idx_messages_match
+CREATE INDEX IF NOT EXISTS idx_messages_match
 ON messages(match_id);
 
-CREATE INDEX idx_messages_sender
+CREATE INDEX IF NOT EXISTS idx_messages_sender
 ON messages(sender_id);

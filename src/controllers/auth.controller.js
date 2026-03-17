@@ -1,10 +1,10 @@
-const authServices=require('../services/auth.service')
+const authServices = require('../services/auth.service')
 
 
-const register=async(req,res,next)=>{
-    try{
+const register = async (req, res, next) => {
+    try {
         const { email, password, username, date_of_birth } = req.body;
-        
+
         if (!email || !password || !username || !date_of_birth) {
             return res.status(400).json({ message: "Email, password, username, and date_of_birth are required" });
         }
@@ -12,102 +12,105 @@ const register=async(req,res,next)=>{
         await authServices.register({ email, password, username, date_of_birth });
 
         res.status(201).json({
-            message:"user registered successfully.Please verify"
+            message: "user registered successfully.Please verify"
         })
-    }catch(error){
+    } catch (error) {
         next(error)
     }
 }
 
-const verifyEmail=async(req,res,next)=>{
-    try{
-        const{user_id,OTPtoken}=req.body
-        await authServices.verifyEmail(user_id,OTPtoken)
+const verifyEmail = async (req, res, next) => {
+    try {
+        // Joi schema sends email + otp
+        const { email, otp } = req.body
+        await authServices.verifyEmail(email, otp)
         res.status(200).json({
-            message:"verified successfully"
+            message: "Email verified successfully"
         })
-          
-    }catch(error){
+
+    } catch (error) {
         next(error)
     }
 }
 
-const resendVerification=async(req,res,next)=>{
-    try{
-        const {user_id}=req.body
-        await authServices.resendVerification(user_id)
+const resendVerification = async (req, res, next) => {
+    try {
+        // Swagger docs say email; service will look up user by email
+        const { email } = req.body
+        await authServices.resendVerification(email)
         res.status(200).json({
-            message:"OTP sent again"
+            message: "OTP sent again"
         })
-    }catch(error){
+    } catch (error) {
         next(error)
     }
-} 
+}
 
-const login=async(req,res,next)=>{
-    try{
-        const {accessToken,refreshToken,user}=await authServices.login(req.body)
+const login = async (req, res, next) => {
+    try {
+        const { accessToken, refreshToken, user } = await authServices.login(req.body)
 
-        res.cookie("refreshToken",refreshToken,{
-            httpOnly:true,
-            secure:false
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: false
         })
 
         res.status(200).json({
-            message:"Login successful",
+            message: "Login successful",
             accessToken
         })
-    }catch(error){
+    } catch (error) {
         next(error)
     }
 }
 
-const forgotPassword=async(req,res,next)=>{
-    try{
-        const {email}=req.body
+const forgotPassword = async (req, res, next) => {
+    try {
+        const { email } = req.body
         await authServices.forgotPassword(email)
         res.status(200).json({
-            message:"reset instructions sent to email"
+            message: "reset instructions sent to email"
         })
-        
-    }catch(error){
+
+    } catch (error) {
         next(error)
     }
 }
 
-const resetPassword=async(req,res,next)=>{
-    try{
-        const {newpassword,token}=req.body;
-        await authServices.resetPassword(newpassword,token)
+const resetPassword = async (req, res, next) => {
+    try {
+        // Joi schema sends newPassword + otp
+        const { email, newPassword, otp } = req.body;
+        await authServices.resetPassword(email, newPassword, otp)
         res.status(200).json({
-            message:"Password reset successfully"
+            message: "Password reset successfully"
         })
-    }catch(error){
+    } catch (error) {
         next(error)
     }
 }
 
-const refresh=async(req,res,next)=>{
-    try{
-        const token=req.cookies.refreshToken;
-        const accessToken=await authServices.refresh(token)
+const refresh = async (req, res, next) => {
+    try {
+        const token = req.cookies.refreshToken;
+        const accessToken = await authServices.refresh(token)
         res.json({
             accessToken
         })
-    }catch(error){
+    } catch (error) {
         next(error)
     }
 }
 
-const logout=async(req,res,next)=>{
-    try{
+const logout = async (req, res, next) => {
+    try {
         const token = req.cookies.refreshToken;
         await authServices.logout(token)
         res.clearCookie("refreshToken")
         res.json({
-            message:"logout successful"
+            message: "logout successful"
         })
-    }catch(error){
+    } catch (error) {
         next(error)
     }
 }
@@ -115,7 +118,7 @@ const logout=async(req,res,next)=>{
 const googleLogin = async (req, res, next) => {
     try {
         const { idToken } = req.body;
-        
+
         if (!idToken) {
             return res.status(400).json({ message: "Google idToken is required" });
         }
