@@ -16,26 +16,6 @@ const getRecommendations = async (req, res, next) => {
     }
 };
 
-const swipe = async (req, res, next) => {
-    try {
-        const userId = req.user.user_id;
-        const { targetUserId, action } = req.body;
-
-        if (!targetUserId || !action) {
-            return res.status(400).json({ message: "targetUserId and action are required" });
-        }
-
-        await discoveryService.recordInteraction(userId, targetUserId, action);
-
-        res.status(200).json({
-            message: `Successfully swiped ${action} on user ${targetUserId}`
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
 module.exports = {
-    getRecommendations,
-    swipe
+    getRecommendations
 };
