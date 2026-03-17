@@ -5,6 +5,7 @@ const { hashPassword, comparePassword } = require('../utils/hash')
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateToken')
 const { verifyToken } = require('../utils/jwt')
 const { OAuth2Client } = require('google-auth-library')
+const emailService = require('./email.service')
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
@@ -30,15 +31,22 @@ const register = async (data) => {
 
     const user = result.rows[0]
 
+    // Auto-create an empty user_profiles row so GET /profile always returns data
+    await db.query(
+        `INSERT INTO user_profiles (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
+        [user.id]
+    )
+
     const otp = Math.floor(100000 + Math.random() * 900000)
 
     await db.query(
-        `INSERT INTO email_verifications (user_id, OTPtoken)
-         VALUES ($1,$2)`,
+        `INSERT INTO email_verifications (user_id, OTPtoken, expires_at)
+         VALUES ($1,$2, NOW() + INTERVAL '15 minutes')`,
         [user.id, otp]
     )
 
-    console.log("Verification OTP:", otp)
+    // Send the verification email to the user asynchronously
+    emailService.sendVerificationEmail(user.email, otp).catch(err => console.error("Email failed to send", err));
 
     const accessToken = generateAccessToken({
         user_id: user.id
@@ -62,58 +70,55 @@ const register = async (data) => {
     }
 }
 
-const verifyEmail = async (userId, OTPtoken) => {
+const verifyEmail = async (email, otp) => {
+    // Look up user by email first
+    const userResult = await db.query(
+        `SELECT id FROM users WHERE email=$1`,
+        [email]
+    )
 
+    if (!userResult.rows.length) {
+        throw new Error("User not found")
+    }
+
+    const userId = userResult.rows[0].id
 
     const result = await db.query(
         `SELECT * FROM email_verifications
-         WHERE user_id=$1`,
-        [userId]
+         WHERE user_id=$1 AND OTPtoken=$2`,
+        [userId, otp]
     )
 
     if (!result.rows.length) {
-        throw new Error("Verification record not found")
+        throw new Error("Invalid OTP or verification record not found")
     }
 
     const record = result.rows[0]
 
-
-    if (record.OTPtoken != OTPtoken) {
-        throw new Error("Invalid OTP")
-    }
-
-
     const now = new Date()
-
     if (now > record.expires_at) {
         throw new Error("OTP expired")
     }
 
-
     await db.query(
-        `UPDATE users
-         SET is_verified = TRUE
-         WHERE id = $1`,
+        `UPDATE users SET is_verified = TRUE WHERE id = $1`,
         [userId]
     )
 
-
     await db.query(
-        `DELETE FROM email_verifications
-         WHERE user_id=$1`,
+        `DELETE FROM email_verifications WHERE user_id=$1`,
         [userId]
     )
+
     return true
 }
 
 
 
-const resendVerification = async (userId) => {
-
-
+const resendVerification = async (email) => {
     const userResult = await db.query(
-        `SELECT id, is_verified FROM users WHERE id=$1`,
-        [userId]
+        `SELECT id, email, is_verified FROM users WHERE email=$1`,
+        [email]
     )
 
     if (!userResult.rows.length) {
@@ -122,14 +127,11 @@ const resendVerification = async (userId) => {
 
     const user = userResult.rows[0]
 
-
     if (user.is_verified) {
         throw new Error("Email already verified")
     }
 
-
     const otp = Math.floor(100000 + Math.random() * 900000)
-
 
     await db.query(
         `UPDATE email_verifications
@@ -137,11 +139,10 @@ const resendVerification = async (userId) => {
              expires_at = NOW() + INTERVAL '15 minutes',
              created_at = NOW()
          WHERE user_id=$2`,
-        [otp, userId]
+        [otp, user.id]
     )
 
-
-    console.log("New verification OTP:", otp)
+    emailService.sendVerificationEmail(user.email, otp).catch(err => console.error("Resend email failed", err));
 
     return true
 }
@@ -151,7 +152,7 @@ const login = async (data) => {
     const { email, password } = data
 
     const result = await db.query(
-        `SELECT id,name,email,password_hash,is_verified
+        `SELECT id,username,email,password_hash,is_verified
          FROM users
          WHERE email=$1`,
         [email]
@@ -212,7 +213,8 @@ const forgotPassword = async (email) => {
         [user.id, otp]
     )
 
-    console.log("Reset OTP:", otp)
+    // Dispatch the password reset email
+    emailService.sendPasswordResetEmail(email, otp).catch(err => console.error("Reset email failed", err));
 }
 
 
@@ -250,43 +252,46 @@ const refresh = async (token) => {
     }
 };
 
-const resetPassword = async (newPassword, token) => {
+const resetPassword = async (email, newPassword, otp) => {
+    // Find the user by email
+    const userResult = await db.query(
+        `SELECT id FROM users WHERE email=$1`,
+        [email]
+    )
 
+    if (!userResult.rows.length) {
+        throw new Error("User not found")
+    }
+
+    const userId = userResult.rows[0].id
 
     const result = await db.query(
         `SELECT user_id, expires_at
          FROM password_resets
-         WHERE otp_token=$1`,
-        [token]
+         WHERE user_id=$1 AND otp_token=$2`,
+        [userId, otp]
     )
 
     if (!result.rows.length) {
-        throw new Error("Invalid reset token")
+        throw new Error("Invalid or expired OTP")
     }
 
     const record = result.rows[0]
 
-
     if (new Date() > record.expires_at) {
-        throw new Error("Reset token expired")
+        throw new Error("Reset OTP expired")
     }
-
 
     const hashedPassword = await hashPassword(newPassword)
 
-
     await db.query(
-        `UPDATE users
-         SET password_hash=$1
-         WHERE id=$2`,
-        [hashedPassword, record.user_id]
+        `UPDATE users SET password_hash=$1 WHERE id=$2`,
+        [hashedPassword, userId]
     )
 
-
     await db.query(
-        `DELETE FROM password_resets
-         WHERE user_id=$1`,
-        [record.user_id]
+        `DELETE FROM password_resets WHERE user_id=$1`,
+        [userId]
     )
 
     return true
@@ -305,16 +310,14 @@ const logout = async (token) => {
 }
 
 const googleLogin = async (idToken) => {
-    // 1. Verify the Google Token
     const ticket = await client.verifyIdToken({
         idToken,
         audience: process.env.GOOGLE_CLIENT_ID
     })
-    
+
     const payload = ticket.getPayload()
     const { email, name } = payload
 
-    // 2. Check if user exists
     const existingUser = await db.query(
         'SELECT id, username, email, is_verified FROM users WHERE email=$1',
         [email]
@@ -325,28 +328,25 @@ const googleLogin = async (idToken) => {
     if (existingUser.rows.length > 0) {
         user = existingUser.rows[0];
     } else {
-        // 3. Register New User with Random Password
+
         const randomPassword = crypto.randomBytes(32).toString('hex')
         const hashedPassword = await hashPassword(randomPassword)
-        
-        // Use google name as base username, removing spaces.
+
         const baseUsername = name ? name.replace(/\s+/g, '').toLowerCase() : 'user'
         const randomSuffix = Math.floor(1000 + Math.random() * 9000)
         const uniqueUsername = `${baseUsername}${randomSuffix}`
 
-        // Dummy dob since Google doesn't provide it easily. User modifies it later.
         const dummyDob = '2000-01-01'
 
         const result = await db.query(
             `INSERT INTO users (username, email, password_hash, date_of_birth, is_verified)
              VALUES ($1,$2,$3,$4,$5)
              RETURNING id, username, email`,
-            [uniqueUsername, email, hashedPassword, dummyDob, true] // is_verified is TRUE because Google verified them
+            [uniqueUsername, email, hashedPassword, dummyDob, true]
         )
         user = result.rows[0]
     }
 
-    // 4. Generate Tokens
     const accessToken = generateAccessToken({ user_id: user.id })
     const refreshToken = generateRefreshToken({ user_id: user.id, type: "refresh" })
 
@@ -374,15 +374,3 @@ module.exports = {
     logout,
     googleLogin
 }
-
-
-
-
-
-
-
-
-
-
-
-

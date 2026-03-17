@@ -22,5 +22,5 @@ CREATE TABLE IF NOT EXISTS notifications (
         CHECK (type IN ('new_match','new_message','new_like'))
 );
 
-    CREATE INDEX idx_notification
-    ON notifications(user_id)
+    CREATE INDEX IF NOT EXISTS idx_notification
+    ON notifications(user_id);

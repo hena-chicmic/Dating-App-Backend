@@ -2,41 +2,256 @@ const express = require("express");
 const router = express.Router();
 const userController = require("../controllers/user.controller");
 const authMiddleware = require("../middleware/auth.middleware");
-
+const validate = require('../middleware/validation.middleware');
+const { updateProfileSchema, updatePreferencesSchema } = require('../validations/user.validation');
+const upload = require("../middleware/multer.middleware");
 
 router.use(authMiddleware);
 
-// Get the logged-in user's own profile (includes bio, preferences, height, location)
+/**
+ * @swagger
+ * tags:
+ *   name: Users
+ *   description: User profile and media operations
+ */
+
+/**
+ * @swagger
+ * /users/profile:
+ *   get:
+ *     summary: Get current user profile
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved user profile
+ */
 router.get("/profile", userController.getMyProfile);
 
-// Update the logged-in user's profile
-router.put("/profile", userController.updateMyProfile);
+/**
+ * @swagger
+ * /users/profile:
+ *   put:
+ *     summary: Update current user profile
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               bio:
+ *                 type: string
+ *                 maxLength: 500
+ *               gender:
+ *                 type: string
+ *                 enum: [male, female, non-binary, other]
+ *               height:
+ *                 type: number
+ *                 minimum: 50
+ *                 maximum: 300
+ *               locationCity:
+ *                 type: string
+ *                 maxLength: 100
+ *               latitude:
+ *                 type: number
+ *                 minimum: -90
+ *                 maximum: 90
+ *               longitude:
+ *                 type: number
+ *                 minimum: -180
+ *                 maximum: 180
+ *     responses:
+ *       200:
+ *         description: Successfully updated profile
+ *       400:
+ *         description: Validation error
+ */
+router.put("/profile", validate(updateProfileSchema), userController.updateMyProfile);
 
-// Get all media for the logged-in user
+/**
+ * @swagger
+ * /users/media:
+ *   get:
+ *     summary: Get all user media
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of user media
+ */
 router.get("/media", userController.getMyMedia);
 
-// Upload a new photo/video
-router.post("/media",upload.single('media'), userController.uploadMedia);
+/**
+ * @swagger
+ * /users/media:
+ *   post:
+ *     summary: Upload new media
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               media:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       201:
+ *         description: Media uploaded successfully
+ */
+router.post("/media", upload.single('media'), userController.uploadMedia);
 
-// Delete a specific photo/video
+/**
+ * @swagger
+ * /users/media/{mediaId}:
+ *   delete:
+ *     summary: Delete specific media
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: mediaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Media deleted successfully
+ */
 router.delete("/media/:mediaId", userController.deleteMedia);
 
-// Set a specific media item as the primary profile picture
+/**
+ * @swagger
+ * /users/media/{mediaId}/primary:
+ *   put:
+ *     summary: Set media as primary profile picture
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: mediaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Set as primary successfully
+ */
 router.put("/media/:mediaId/primary", userController.setPrimaryMedia);
 
-// Get the master list of all available interests
+/**
+ * @swagger
+ * /users/interests:
+ *   get:
+ *     summary: Get all available master interests
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Master list of interests
+ */
 router.get("/interests", userController.getAllInterests);
 
-// Get all interests selected by the logged-in user
+/**
+ * @swagger
+ * /users/my-interests:
+ *   get:
+ *     summary: Get current user's selected interests
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User's interests retrieved
+ */
 router.get("/my-interests", userController.getMyInterests);
 
-// Update/Set the list of interests for the user
+/**
+ * @swagger
+ * /users/my-interests:
+ *   put:
+ *     summary: Update user's interests
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - interestIds
+ *             properties:
+ *               interestIds:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *     responses:
+ *       200:
+ *         description: Interests updated
+ */
 router.put("/my-interests", userController.updateMyInterests);
 
+/**
+ * @swagger
+ * /users/{targetUserId}:
+ *   get:
+ *     summary: Get another user's public profile
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: targetUserId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Profile retrieved
+ */
 router.get("/:targetUserId", userController.getUserProfile);
 
+/**
+ * @swagger
+ * /users/deactivate:
+ *   post:
+ *     summary: Deactivate account
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Account deactivated
+ */
 router.post("/deactivate", userController.deactivateAccount);
 
+/**
+ * @swagger
+ * /users/account:
+ *   delete:
+ *     summary: Delete account permanently
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Account deleted
+ */
 router.delete("/account", userController.deleteAccount);
 
 

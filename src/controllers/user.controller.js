@@ -18,8 +18,13 @@ const getMyProfile = async (req, res, next) => {
 const updateMyProfile = async (req, res, next) => {
   try {
     const userId = req.user.user_id;
-    const profileData = req.body;
-    
+
+    const profileData = {
+      ...req.body,
+      location_city: req.body.location_city || req.body.locationCity,
+      location_country: req.body.location_country || req.body.locationCountry
+    };
+
     const updatedProfile = await userServices.updateMyProfile(userId, profileData);
 
     res.status(200).json({
@@ -50,18 +55,31 @@ const getMyMedia = async (req, res, next) => {
 const uploadMedia = async (req, res, next) => {
   try {
     const userId = req.user.user_id;
-    const file = req.file; // Assuming multer or similar middleware attaches file to req
-    // OR if receiving URLs from client
-    const mediaData = req.body; 
 
-    // Adjust parameters depending on how you handle file uploads
-    const newMedia = await userServices.uploadMedia(userId, file || mediaData);
+    console.log("FILE OBJECT:", req.file);
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No file uploaded"
+      });
+    }
+
+    const mediaData = {
+      media_url: req.file.path,
+      media_type: "image"
+    };
+
+    console.log("MEDIA DATA:", mediaData);
+
+    const newMedia = await userServices.uploadMedia(userId, mediaData);
 
     res.status(201).json({
       success: true,
       message: "Media uploaded successfully",
       data: newMedia
     });
+
   } catch (error) {
     next(error);
   }
