@@ -25,4 +25,14 @@ CREATE TABLE IF NOT EXISTS reports (
 
     CONSTRAINT check_status
         CHECK (status IN ('pending','reviewed','resolved'))
+
+    CONSTRAINT check_reason
+        CHECK(reason IN (
+        'SPAM',
+        'HARASSMENT',
+        'INAPPROPRIATE_CONTENT',
+        'FAKE_PROFILE',
+        'HATE_SPEECH',
+        'SCAM',
+        'OTHER'))
 );
