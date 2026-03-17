@@ -2,6 +2,9 @@ const matchRepository = require('../repositories/match.repository');
 const { getIO } = require('../config/socket');
 const onlineUsers = require('../socket/online-users');
 const notificationService = require('./notification.service');
+const cache = require('../utils/cache');
+
+const TTL_MATCHES = 2 * 60; // 2 minutes
 
 const checkAndCreateMatch = async (userId, targetUserId) => {
    
@@ -32,6 +35,10 @@ const checkAndCreateMatch = async (userId, targetUserId) => {
             } catch (err) {
                 console.error('Notification creation error on new match:', err.message);
             }
+
+            // Invalidate match cache for both users
+            await cache.del(`user:${userId}:matches`);
+            await cache.del(`user:${targetUserId}:matches`);
         }
         return newMatch;
     }
@@ -40,7 +47,12 @@ const checkAndCreateMatch = async (userId, targetUserId) => {
 };
 
 const getMatches = async (userId) => {
+    const key = `user:${userId}:matches`;
+    const cached = await cache.get(key);
+    if (cached) return cached;
+
     const matches = await matchRepository.fetchUserMatches(userId);
+    await cache.set(key, matches, TTL_MATCHES);
     return matches;
 };
 

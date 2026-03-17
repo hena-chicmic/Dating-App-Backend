@@ -1,5 +1,6 @@
 const interactionRepository = require('../repositories/interaction.repository');
-const matchService = require('./match.service'); 
+const matchService = require('./match.service');
+const discoveryService = require('./discovery.service'); 
 
 const recordInteraction = async (userId, targetUserId, action) => {
     if (!['like', 'dislike'].includes(action)) {
@@ -20,6 +21,9 @@ const recordInteraction = async (userId, targetUserId, action) => {
             interaction.isMatch = true;
         }
     }
+
+    // Invalidate discovery feed cache so user sees fresh recommendations
+    await discoveryService.invalidateFeed(userId);
 
     return interaction;
 };

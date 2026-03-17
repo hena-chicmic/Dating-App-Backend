@@ -1,15 +1,29 @@
 const discoveryRepository = require('../repositories/discovery.repository');
-const interactionRepository = require('../repositories/interaction.repository');
-const matchService = require('./match.service');
+const cache = require('../utils/cache');
+
+const TTL_FEED = 2 * 60; // 2 minutes
 
 const getFeed = async (userId, page = 1) => {
+    const key = `feed:${userId}:page:${page}`;
+    const cached = await cache.get(key);
+    if (cached) return cached;
+
     const limit = 10;
     const offset = (page - 1) * limit;
-
     const recommendations = await discoveryRepository.findRecommendations(userId, limit, offset);
+
+    await cache.set(key, recommendations, TTL_FEED);
     return recommendations;
 };
 
+/**
+ * Invalidate a user's discovery feed cache (call after swipe).
+ */
+const invalidateFeed = async (userId) => {
+    await cache.delByPattern(`feed:${userId}:*`);
+};
+
 module.exports = {
-    getFeed
+    getFeed,
+    invalidateFeed
 };
