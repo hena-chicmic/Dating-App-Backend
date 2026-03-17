@@ -1,4 +1,5 @@
 /node_modules
 .env
 package-lock.json
-test-google-login.html.DS_Store
+test-google-login.html
+.DS_Store
