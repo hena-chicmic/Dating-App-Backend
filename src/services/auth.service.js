@@ -1,6 +1,6 @@
 const crypto = require('crypto')
 
-const db = require('../config/db')
+const authRepository = require('../repositories/auth.repository')
 const { hashPassword, comparePassword } = require('../utils/hash')
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateToken')
 const { verifyToken } = require('../utils/jwt')
@@ -13,40 +13,23 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 const register = async (data) => {
     const { username, email, password, date_of_birth } = data
 
-    const existingUser = await db.query(
-        'SELECT id from users where email=$1',
-        [email]
-    )
-    if (existingUser.rows.length) {
+    const exists = await authRepository.checkUserExists(email)
+    if (exists) {
         throw new Error("user already exists!!")
     }
     const hashedPassword = await hashPassword(password)
 
-    const result = await db.query(
-        `INSERT INTO users (username, email, password_hash, date_of_birth)
-         VALUES ($1,$2,$3,$4)
-         RETURNING id,username,email`,
-        [username, email, hashedPassword, date_of_birth]
-    )
-
-    const user = result.rows[0]
-
-    // Auto-create an empty user_profiles row so GET /profile always returns data
-    await db.query(
-        `INSERT INTO user_profiles (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
-        [user.id]
-    )
-
     const otp = Math.floor(100000 + Math.random() * 900000)
 
-    await db.query(
-        `INSERT INTO email_verifications (user_id, OTPtoken, expires_at)
-         VALUES ($1,$2, NOW() + INTERVAL '15 minutes')`,
-        [user.id, otp]
-    )
+    const user = await authRepository.register(data, hashedPassword, otp)
 
-    // Send the verification email to the user asynchronously
-    emailService.sendVerificationEmail(user.email, otp).catch(err => console.error("Email failed to send", err));
+    // Send the verification email to the user synchronously to ensure delivery config works
+    try {
+        await emailService.sendVerificationEmail(user.email, otp);
+    } catch (err) {
+        console.error("Email failed to send", err);
+        throw new Error("User registered, but verification email failed to send. Please contact support or try resending later.");
+    }
 
     const accessToken = generateAccessToken({
         user_id: user.id
@@ -57,11 +40,7 @@ const register = async (data) => {
         type: "refresh"
     })
 
-    await db.query(
-        `INSERT INTO refresh_tokens (user_id, token, expires_at)
-         VALUES ($1, $2, NOW() + INTERVAL '7 days')`,
-        [user.id, refreshToken]
-    )
+    await authRepository.saveRefreshToken(user.id, refreshToken)
 
     return {
         user,
@@ -71,78 +50,22 @@ const register = async (data) => {
 }
 
 const verifyEmail = async (email, otp) => {
-    // Look up user by email first
-    const userResult = await db.query(
-        `SELECT id FROM users WHERE email=$1`,
-        [email]
-    )
-
-    if (!userResult.rows.length) {
-        throw new Error("User not found")
-    }
-
-    const userId = userResult.rows[0].id
-
-    const result = await db.query(
-        `SELECT * FROM email_verifications
-         WHERE user_id=$1 AND OTPtoken=$2`,
-        [userId, otp]
-    )
-
-    if (!result.rows.length) {
-        throw new Error("Invalid OTP or verification record not found")
-    }
-
-    const record = result.rows[0]
-
-    const now = new Date()
-    if (now > record.expires_at) {
-        throw new Error("OTP expired")
-    }
-
-    await db.query(
-        `UPDATE users SET is_verified = TRUE WHERE id = $1`,
-        [userId]
-    )
-
-    await db.query(
-        `DELETE FROM email_verifications WHERE user_id=$1`,
-        [userId]
-    )
-
-    return true
+    return await authRepository.verifyEmail(email, otp);
 }
 
 
 
 const resendVerification = async (email) => {
-    const userResult = await db.query(
-        `SELECT id, email, is_verified FROM users WHERE email=$1`,
-        [email]
-    )
-
-    if (!userResult.rows.length) {
-        throw new Error("User not found")
-    }
-
-    const user = userResult.rows[0]
-
-    if (user.is_verified) {
-        throw new Error("Email already verified")
-    }
-
     const otp = Math.floor(100000 + Math.random() * 900000)
 
-    await db.query(
-        `UPDATE email_verifications
-         SET OTPtoken=$1,
-             expires_at = NOW() + INTERVAL '15 minutes',
-             created_at = NOW()
-         WHERE user_id=$2`,
-        [otp, user.id]
-    )
+    const user = await authRepository.resendVerification(email, otp)
 
-    emailService.sendVerificationEmail(user.email, otp).catch(err => console.error("Resend email failed", err));
+    try {
+        await emailService.sendVerificationEmail(user.email, otp);
+    } catch (err) {
+        console.error("Resend email failed", err);
+        throw new Error("Failed to send verification email. Please try again later.");
+    }
 
     return true
 }
@@ -151,18 +74,15 @@ const login = async (data) => {
 
     const { email, password } = data
 
-    const result = await db.query(
-        `SELECT id,username,email,password_hash,is_verified
-         FROM users
-         WHERE email=$1`,
-        [email]
-    )
+    // Note: login inside repository returns { user } or { user: null } 
+    // and doesn't explicitly throw errors to match how we handle it in service
+    const loginResult = await authRepository.login(email, null) // the token will be saved later
 
-    if (!result.rows.length) {
+    if (!loginResult.user) {
         throw new Error("Invalid email or password")
     }
 
-    const user = result.rows[0]
+    const user = loginResult.user
 
     const match = await comparePassword(password, user.password_hash)
 
@@ -179,11 +99,7 @@ const login = async (data) => {
         type: "refresh"
     })
 
-    await db.query(
-        `INSERT INTO refresh_tokens (user_id, token, expires_at)
-         VALUES ($1, $2, NOW() + INTERVAL '7 days')`,
-        [user.id, refreshToken]
-    )
+    await authRepository.saveRefreshToken(user.id, refreshToken)
 
     return {
         user,
@@ -193,28 +109,23 @@ const login = async (data) => {
 }
 
 const forgotPassword = async (email) => {
-
-    const result = await db.query(
-        `SELECT id FROM users WHERE email=$1`,
-        [email]
-    )
-
-    if (!result.rows.length) {
-        return new Error("Invalid email")
-    }
-
-    const user = result.rows[0]
-
     const otp = Math.floor(100000 + Math.random() * 900000)
 
-    await db.query(
-        `INSERT INTO password_resets(user_id, otp_token)
-         VALUES($1,$2)`,
-        [user.id, otp]
-    )
+    const userOrError = await authRepository.forgotPassword(email, otp)
+    
+    if (userOrError instanceof Error) {
+        return userOrError
+    }
 
     // Dispatch the password reset email
-    emailService.sendPasswordResetEmail(email, otp).catch(err => console.error("Reset email failed", err));
+    try {
+        await emailService.sendPasswordResetEmail(email, otp);
+    } catch (err) {
+        console.error("Reset email failed", err);
+        throw new Error("Failed to send password reset email. Please try again later.");
+    }
+    
+    return true;
 }
 
 
@@ -232,12 +143,9 @@ const refresh = async (token) => {
             throw new Error("Invalid token type");
         }
 
-        const result = await db.query(
-            "SELECT * FROM refresh_tokens WHERE token=$1 AND expires_at > NOW()",
-            [token]
-        );
+        const isValid = await authRepository.refresh(token)
 
-        if (!result.rows.length) {
+        if (!isValid) {
             throw new Error("Token not recognized or expired securely");
         }
 
@@ -253,60 +161,14 @@ const refresh = async (token) => {
 };
 
 const resetPassword = async (email, newPassword, otp) => {
-    // Find the user by email
-    const userResult = await db.query(
-        `SELECT id FROM users WHERE email=$1`,
-        [email]
-    )
-
-    if (!userResult.rows.length) {
-        throw new Error("User not found")
-    }
-
-    const userId = userResult.rows[0].id
-
-    const result = await db.query(
-        `SELECT user_id, expires_at
-         FROM password_resets
-         WHERE user_id=$1 AND otp_token=$2`,
-        [userId, otp]
-    )
-
-    if (!result.rows.length) {
-        throw new Error("Invalid or expired OTP")
-    }
-
-    const record = result.rows[0]
-
-    if (new Date() > record.expires_at) {
-        throw new Error("Reset OTP expired")
-    }
-
     const hashedPassword = await hashPassword(newPassword)
-
-    await db.query(
-        `UPDATE users SET password_hash=$1 WHERE id=$2`,
-        [hashedPassword, userId]
-    )
-
-    await db.query(
-        `DELETE FROM password_resets WHERE user_id=$1`,
-        [userId]
-    )
-
-    return true
+    return await authRepository.resetPassword(email, hashedPassword, otp)
 }
 
 const logout = async (token) => {
     if (!token) return;
 
-    await db.query(
-        `DELETE FROM refresh_tokens
-         WHERE token=$1`,
-        [token]
-    )
-
-    return true
+    return await authRepository.logout(token)
 }
 
 const googleLogin = async (idToken) => {
@@ -318,43 +180,21 @@ const googleLogin = async (idToken) => {
     const payload = ticket.getPayload()
     const { email, name } = payload
 
-    const existingUser = await db.query(
-        'SELECT id, username, email, is_verified FROM users WHERE email=$1',
-        [email]
-    )
+    const randomPassword = crypto.randomBytes(32).toString('hex')
+    const hashedPassword = await hashPassword(randomPassword)
 
-    let user;
+    const baseUsername = name ? name.replace(/\s+/g, '').toLowerCase() : 'user'
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000)
+    const uniqueUsername = `${baseUsername}${randomSuffix}`
 
-    if (existingUser.rows.length > 0) {
-        user = existingUser.rows[0];
-    } else {
+    const dummyDob = '2000-01-01'
 
-        const randomPassword = crypto.randomBytes(32).toString('hex')
-        const hashedPassword = await hashPassword(randomPassword)
-
-        const baseUsername = name ? name.replace(/\s+/g, '').toLowerCase() : 'user'
-        const randomSuffix = Math.floor(1000 + Math.random() * 9000)
-        const uniqueUsername = `${baseUsername}${randomSuffix}`
-
-        const dummyDob = '2000-01-01'
-
-        const result = await db.query(
-            `INSERT INTO users (username, email, password_hash, date_of_birth, is_verified)
-             VALUES ($1,$2,$3,$4,$5)
-             RETURNING id, username, email`,
-            [uniqueUsername, email, hashedPassword, dummyDob, true]
-        )
-        user = result.rows[0]
-    }
+    const user = await authRepository.googleLogin(email, uniqueUsername, hashedPassword, dummyDob, null)
 
     const accessToken = generateAccessToken({ user_id: user.id })
     const refreshToken = generateRefreshToken({ user_id: user.id, type: "refresh" })
 
-    await db.query(
-        `INSERT INTO refresh_tokens (user_id, token, expires_at)
-         VALUES ($1, $2, NOW() + INTERVAL '7 days')`,
-        [user.id, refreshToken]
-    )
+    await authRepository.saveRefreshToken(user.id, refreshToken)
 
     return {
         user,

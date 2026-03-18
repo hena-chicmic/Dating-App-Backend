@@ -56,8 +56,6 @@ const uploadMedia = async (req, res, next) => {
   try {
     const userId = req.user.user_id;
 
-    console.log("FILE OBJECT:", req.file);
-
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -69,8 +67,6 @@ const uploadMedia = async (req, res, next) => {
       media_url: req.file.path,
       media_type: "image"
     };
-
-    console.log("MEDIA DATA:", mediaData);
 
     const newMedia = await userServices.uploadMedia(userId, mediaData);
 

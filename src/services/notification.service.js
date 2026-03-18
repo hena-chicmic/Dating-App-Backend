@@ -1,25 +1,39 @@
-const notificationRepository=require('../repositories/notification.repository')
+const notificationRepository = require('../repositories/notification.repository');
+const cache = require('../utils/cache');
 
-const getNotifications=async(userId,notification_id)=>{
-    return await notificationRepository.getNotifications(userId,notification_id)
-}
+const TTL_NOTIFICATIONS = 60; // 60 seconds
 
-const markRead=async(userId,notification_id)=>{
-    return await notificationRepository.markRead(userId,notification_id)
-}
+const getNotifications = async (userId) => {
+    const key = `user:${userId}:notifications`;
+    const cached = await cache.get(key);
+    if (cached) return cached;
 
-const markAllRead=async(userId)=>{
-    return await notificationRepository.markAllRead(userId)
-}
+    const notifications = await notificationRepository.getNotifications(userId);
+    await cache.set(key, notifications, TTL_NOTIFICATIONS);
+    return notifications;
+};
 
-const createNotifications=async(userId,type,reference_id,message)=>{
-    return await notificationRepository.createNotifications(userId, type, reference_id, message)
-}
+const markRead = async (userId, notification_id) => {
+    const result = await notificationRepository.markRead(userId, notification_id);
+    await cache.del(`user:${userId}:notifications`);
+    return result;
+};
 
+const markAllRead = async (userId) => {
+    const result = await notificationRepository.markAllRead(userId);
+    await cache.del(`user:${userId}:notifications`);
+    return result;
+};
 
-module.exports={
+const createNotifications = async (userId, type, reference_id, message) => {
+    const result = await notificationRepository.createNotifications(userId, type, reference_id, message);
+    await cache.del(`user:${userId}:notifications`);
+    return result;
+};
+
+module.exports = {
     getNotifications,
     markRead,
     markAllRead,
     createNotifications
-}
+};

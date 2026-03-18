@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { getChatHistory, markRead, deleteMessage } = require('../controllers/message.controller');
-const authMiddleware = require('../middleware/auth.middleware');
+const isAuthenticated = require('../middleware/auth.middleware');
 const validate = require('../middleware/validation.middleware');
 const { matchIdParamSchema, messageIdParamSchema, getChatQuerySchema } = require('../validations/message.validation');
 
-router.use(authMiddleware);
+router.use(isAuthenticated);
 
 /**
  * @swagger

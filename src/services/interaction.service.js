@@ -1,5 +1,6 @@
 const interactionRepository = require('../repositories/interaction.repository');
-const matchService = require('./match.service'); 
+const matchService = require('./match.service');
+const discoveryService = require('./discovery.service'); 
 
 const recordInteraction = async (userId, targetUserId, action) => {
     if (!['like', 'dislike'].includes(action)) {
@@ -18,8 +19,26 @@ const recordInteraction = async (userId, targetUserId, action) => {
         if (potentialMatch) {
             // We append a flag so the controller knows to throw confetti on the frontend
             interaction.isMatch = true;
+        } else {
+            // Not a mutual match yet, just a regular like, so notify the target user
+            try {
+                // We must require notificationService locally or at top level. Let's do top level soon.
+                // Wait, it's not imported. Let me just use the imported one. I'll add the import too
+                const notificationService = require('./notification.service');
+                await notificationService.createNotifications(
+                    targetUserId, 
+                    'new_like', 
+                    userId, 
+                    "Someone liked your profile!"
+                );
+            } catch (err) {
+                console.error('Failed to create new_like notification:', err.message);
+            }
         }
     }
+
+    // Invalidate discovery feed cache so user sees fresh recommendations
+    await discoveryService.invalidateFeed(userId);
 
     return interaction;
 };

@@ -1,12 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const userController = require("../controllers/user.controller");
-const authMiddleware = require("../middleware/auth.middleware");
+const isAuthenticated = require("../middleware/auth.middleware");
 const validate = require('../middleware/validation.middleware');
 const { updateProfileSchema, updatePreferencesSchema, updateInterestsSchema, mediaIdParamSchema, targetUserIdParamSchema } = require('../validations/user.validation');
 const upload = require("../middleware/multer.middleware");
 
-router.use(authMiddleware);
+router.use(isAuthenticated);
 
 /**
  * @swagger

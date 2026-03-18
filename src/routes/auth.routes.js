@@ -6,6 +6,7 @@ const { register, resendVerification, verifyEmail, login, forgotPassword, resetP
 const isAuthenticated = require('../middleware/auth.middleware')
 const validate = require('../middleware/validation.middleware')
 const { registerSchema, loginSchema, verifyEmailSchema, requestPasswordResetSchema, resetPasswordSchema, resendVerificationSchema, googleLoginSchema } = require('../validations/auth.validation')
+const { authLimiter, strictAuthLimiter } = require('../middleware/rateLimiter.middleware')
 
 /**
  * @swagger
@@ -52,7 +53,7 @@ const { registerSchema, loginSchema, verifyEmailSchema, requestPasswordResetSche
  *       400:
  *         description: Validation error
  */
-router.post('/register', validate(registerSchema), register)
+router.post('/register', authLimiter, validate(registerSchema), register)
 
 /**
  * @swagger
@@ -81,7 +82,7 @@ router.post('/register', validate(registerSchema), register)
  *       401:
  *         description: Invalid credentials
  */
-router.post('/login', validate(loginSchema), login)
+router.post('/login', authLimiter, validate(loginSchema), login)
 
 /**
  * @swagger
@@ -154,7 +155,7 @@ router.post('/verify-email', validate(verifyEmailSchema), verifyEmail)
  *       200:
  *         description: Verification email sent
  */
-router.post('/resend-verification', validate(resendVerificationSchema), resendVerification)
+router.post('/resend-verification', strictAuthLimiter, validate(resendVerificationSchema), resendVerification)
 
 /**
  * @swagger
@@ -219,7 +220,7 @@ router.post('/refresh', refresh)
  *       200:
  *         description: Reset info sent
  */
-router.post('/forgot-password', validate(requestPasswordResetSchema), forgotPassword)
+router.post('/forgot-password', strictAuthLimiter, validate(requestPasswordResetSchema), forgotPassword)
 
 /**
  * @swagger
