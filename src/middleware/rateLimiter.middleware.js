@@ -1,4 +1,5 @@
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
 const { RedisStore } = require('rate-limit-redis');
 const { getRedisClient } = require('../config/redis');
 
@@ -21,7 +22,7 @@ const authLimiter = rateLimit({
     legacyHeaders: false,
     handler: jsonHandler,
     store: makeStore(),
-    keyGenerator: (req) => `rate:auth:${req.ip}`
+    keyGenerator: (req, res) => `rate:auth:${ipKeyGenerator(req, res)}`
 });
 
 // Strict limit for password reset and resend-verification
@@ -32,7 +33,7 @@ const strictAuthLimiter = rateLimit({
     legacyHeaders: false,
     handler: jsonHandler,
     store: makeStore(),
-    keyGenerator: (req) => `rate:strict-auth:${req.ip}`
+    keyGenerator: (req, res) => `rate:strict-auth:${ipKeyGenerator(req, res)}`
 });
 
 // Swipe rate limit
@@ -43,7 +44,7 @@ const swipeLimiter = rateLimit({
     legacyHeaders: false,
     handler: jsonHandler,
     store: makeStore(),
-    keyGenerator: (req) => `rate:swipe:${req.ip}`
+    keyGenerator: (req, res) => `rate:swipe:${ipKeyGenerator(req, res)}`
 });
 
 // Global safety net
@@ -54,7 +55,7 @@ const globalLimiter = rateLimit({
     legacyHeaders: false,
     handler: jsonHandler,
     store: makeStore(),
-    keyGenerator: (req) => `rate:global:${req.ip}`
+    keyGenerator: (req, res) => `rate:global:${ipKeyGenerator(req, res)}`
 });
 
 module.exports = { authLimiter, strictAuthLimiter, swipeLimiter, globalLimiter };

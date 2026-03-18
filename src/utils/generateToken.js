@@ -9,8 +9,13 @@ const generateAccessToken=(payload)=>{
 }
 
 const generateRefreshToken=(payload)=>{
+    // Add a unique jti (JWT ID) to ensure uniqueness even if generated in the same second
+    const uniquePayload = {
+        ...payload,
+        jti: require('crypto').randomUUID()
+    };
     return jwt.sign(
-        payload,
+        uniquePayload,
         process.env.REFRESH_SECRET,
         {expiresIn:"7d"}
     )
