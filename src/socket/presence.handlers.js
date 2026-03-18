@@ -7,12 +7,12 @@ module.exports = (socket, io) => {
         userId = parseInt(userId);
         // REDIS FIX: onlineUsers.set is now async
         await onlineUsers.set(userId, socket.id);
-        socket.userId = userId; 
+        socket.userId = userId;
         console.log(`User ${userId} is online (socket: ${socket.id})`);
 
         try {
             const matches = await matchRepository.fetchUserMatches(userId);
-            
+
             // REDIS FIX: Need to await the 'has' check for each match
             const onlineMatchIds = [];
             for (const m of matches) {
@@ -35,7 +35,7 @@ module.exports = (socket, io) => {
         }
     });
 
-    
+
     socket.on('disconnect', async () => {
         const userId = socket.userId;
         if (!userId) return;
