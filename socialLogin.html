@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Login Test</title>
+    <!-- Load Google Identity Services library -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body style="font-family: sans-serif; padding: 40px; text-align: center;">
+
+    <h2>Test Google Social Login</h2>
+    <p>This is a minimal frontend to test the Google Login backend endpoint.</p>
+
+    <!-- Configure Google Sign-In -->
+    <!-- REPLACE data-client_id WITH YOUR ACTUAL GOOGLE_CLIENT_ID -->
+    <div id="g_id_onload"
+         data-client_id="226203161200-8qa5i5r2n9r19uop27n76e7odstlm19m.apps.googleusercontent.com"
+         data-context="signin"
+         data-ux_mode="popup"
+         data-callback="handleCredentialResponse"
+         data-auto_prompt="false">
+    </div>
+
+    <!-- Render the Google Sign-In Button -->
+    <div class="g_id_signin"
+         data-type="standard"
+         data-shape="rectangular"
+         data-theme="outline"
+         data-text="signin_with"
+         data-size="large"
+         data-logo_alignment="left">
+    </div>
+
+    <div style="margin-top: 30px; text-align: left; background: #f4f4f4; padding: 20px; border-radius: 8px;">
+        <h3>Backend Response:</h3>
+        <pre id="responseOutput" style="white-space: pre-wrap; word-break: break-all;">Awaiting login...</pre>
+    </div>
+
+    <script>
+        // This callback is triggered when the user successfully logs into Google via the popup
+        function handleCredentialResponse(response) {
+            console.log("Encoded JWT ID token: " + response.credential);
+            
+            const output = document.getElementById('responseOutput');
+            output.innerText = "Received Google Token. Sending to Backend...\n\n";
+
+            // Send the token to the backend server
+            fetch('http://localhost:3000/api/v1/auth/google', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ idToken: response.credential })
+            })
+            .then(res => res.json())
+            .then(data => {
+                console.log("Backend Response:", data);
+                output.innerText += JSON.stringify(data, null, 2);
+            })
+            .catch(error => {
+                console.error('Error fetching backend:', error);
+                output.innerText += "Error connecting to backend: " + error.message;
+            });
+        }
+    </script>
+</body>
+</html>

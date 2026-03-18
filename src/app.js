@@ -21,7 +21,7 @@ const userRoutes = require('./routes/user.routes');
 const app = express();
 
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:8000'],
     credentials: true,
 }));
 app.use(express.json());
