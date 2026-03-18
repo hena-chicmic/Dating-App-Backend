@@ -1,6 +1,7 @@
 const interactionRepository = require('../repositories/interaction.repository');
-const matchService = require('./match.service');
 const discoveryService = require('./discovery.service'); 
+const { addMatchJob } = require('../queues/match.queue');
+const { addNotificationJob } = require('../queues/notification.queue');
 
 const recordInteraction = async (userId, targetUserId, action) => {
     if (!['like', 'dislike'].includes(action)) {
@@ -13,27 +14,21 @@ const recordInteraction = async (userId, targetUserId, action) => {
 
     const interaction = await interactionRepository.saveInteraction(userId, targetUserId, action);
 
-    // Business Logic: If it's a 'like', we trigger the match engine to see if it's mutual
+    // Business Logic: If it's a 'like', dispatch jobs to the background queues
     if (action === 'like') {
-        const potentialMatch = await matchService.checkAndCreateMatch(userId, targetUserId);
-        if (potentialMatch) {
-            // We append a flag so the controller knows to throw confetti on the frontend
-            interaction.isMatch = true;
-        } else {
-            // Not a mutual match yet, just a regular like, so notify the target user
-            try {
-                // We must require notificationService locally or at top level. Let's do top level soon.
-                // Wait, it's not imported. Let me just use the imported one. I'll add the import too
-                const notificationService = require('./notification.service');
-                await notificationService.createNotifications(
-                    targetUserId, 
-                    'new_like', 
-                    userId, 
-                    "Someone liked your profile!"
-                );
-            } catch (err) {
-                console.error('Failed to create new_like notification:', err.message);
-            }
+        // 1. Dispatch Match check to background worker
+        await addMatchJob(userId, targetUserId);
+
+        // 2. Dispatch a standard notification for the Like
+        try {
+            await addNotificationJob(
+                targetUserId, 
+                'new_like', 
+                userId, 
+                "Someone liked your profile!"
+            );
+        } catch (err) {
+            console.error('Failed to dispatch new_like notification job:', err.message);
         }
     }
 

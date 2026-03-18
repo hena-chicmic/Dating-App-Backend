@@ -1,5 +1,6 @@
 // src/controllers/user.controller.js
 const userServices = require('../services/user.service');
+const { queueProfileRecalculation } = require('../queues/discovery.queue');
 
 const getMyProfile = async (req, res, next) => {
   try {
@@ -26,6 +27,9 @@ const updateMyProfile = async (req, res, next) => {
     };
 
     const updatedProfile = await userServices.updateMyProfile(userId, profileData);
+
+    // Immediately return response, perform heavy match recalculations in background queue
+    await queueProfileRecalculation(userId);
 
     res.status(200).json({
       success: true,
@@ -146,6 +150,9 @@ const updateMyInterests = async (req, res, next) => {
     const { interestIds } = req.body; // Expecting an array of interest IDs
 
     const updatedInterests = await userServices.updateMyInterests(userId, interestIds);
+
+    // Offload heavy potential match recalculations to background process
+    await queueProfileRecalculation(userId);
 
     res.status(200).json({
       success: true,

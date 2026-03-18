@@ -19,8 +19,8 @@ const sendMessage = async (matchId, senderId, text, mediaUrl = null, mediaType =
     
     if (receiverId) {
         try {
-            const notificationService = require('./notification.service');
-            await notificationService.createNotifications(
+            const { addNotificationJob } = require('../queues/notification.queue');
+            await addNotificationJob(
                 receiverId, 
                 'new_message', 
                 matchId, 
