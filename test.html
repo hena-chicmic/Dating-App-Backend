@@ -40,14 +40,18 @@
 
     <div id="connectionStatus" class="status offline">Status: Disconnected</div>
     <div id="onlineMatches" style="font-size: 0.9em; margin-bottom: 10px;">Online Matches: None</div>
+    
+    <button onclick="loadHistory()" style="margin-bottom: 15px; width: 100%; background: #333;">Load Chat History</button>
 
     <hr>
 
     <div id="chat"></div>
+    <div id="typingIndicator" style="font-size: 0.8em; color: gray; height: 15px; margin-bottom: 5px; margin-left: 5px;"></div>
 
-    <div class="chat-input">
-        <input type="text" id="message" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
-        <button onclick="sendMessage()">Send</button>
+    <div class="chat-input" style="flex-wrap: wrap; align-items: center;">
+        <input type="text" id="message" placeholder="Type a message..." onkeypress="handleKeyPress(event)" oninput="handleTyping()" style="flex: 2; min-width: 200px;">
+        <input type="file" id="mediaUpload" accept="image/*" style="flex: 1; padding: 5px; min-width: 200px; background: white; border: 1px solid #ddd; border-radius: 5px;">
+        <button id="sendBtn" onclick="sendMessage()" style="min-width: 100px;">Send</button>
     </div>
 </div>
 
@@ -88,7 +92,12 @@
 
         socket.on("receive_message", (data) => {
             const isMe = data.sender_id == userId;
-            logMessage(data.message_text, isMe ? "sent" : "received", isMe ? "You" : data.sender_username || "Match");
+            let content = data.message_text || "";
+            if (data.media_url) {
+                if (data.media_type === "image") content += `<br><img src="${data.media_url}" style="max-width:150px; border-radius:5px; margin-top:5px;">`;
+                else content += `<br><a href="${data.media_url}" target="_blank" style="color: blue; text-decoration: underline;">[📍 Attached ${data.media_type}]</a>`;
+            }
+            logMessage(content, isMe ? "sent" : "received", isMe ? "You" : data.sender_username || "Match");
         });
 
         socket.on("new_match", (data) => {
@@ -107,6 +116,14 @@
             logSystem("👤 User " + data.userId + " went offline");
         });
 
+        socket.on("user_typing", (data) => {
+            document.getElementById("typingIndicator").innerText = `Match is typing...`;
+        });
+
+        socket.on("user_stop_typing", (data) => {
+            document.getElementById("typingIndicator").innerText = "";
+        });
+
         socket.on("disconnect", () => {
             document.getElementById("connectionStatus").innerText = "Status: Disconnected";
             document.getElementById("connectionStatus").className = "status offline";
@@ -118,16 +135,114 @@
         });
     }
 
-    function sendMessage() {
+    let typingTimeout;
+    function handleTyping() {
+        if (!socket || !socket.connected) return;
+        const matchId = document.getElementById("matchId").value;
+        socket.emit("typing", { matchId });
+        
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            socket.emit("stop_typing", { matchId });
+        }, 1500);
+    }
+
+    async function loadHistory() {
+        const token = document.getElementById("token").value;
+        const matchId = document.getElementById("matchId").value;
+        const userId = document.getElementById("userId").value;
+        
+        if (!token || !matchId) return alert("Please provide Token and Match ID to load history.");
+
+        try {
+            const res = await fetch(`http://localhost:3000/api/v1/messages/${matchId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                const chat = document.getElementById("chat");
+                chat.innerHTML = ""; // Wipe screen 
+                
+                logSystem("✅ Chat history successfully loaded from API");
+                const messages = Array.isArray(data) ? data : (data.data || []);
+                
+                if (messages.length === 0) {
+                    logSystem("📭 No previous chat history found.");
+                }
+                
+                messages.reverse().forEach(msg => {
+                    const isMe = msg.sender_id == userId;
+                    let content = msg.message_text || "";
+                    if (msg.media_url) {
+                        if (msg.media_type === "image") content += `<br><img src="${msg.media_url}" style="max-width:150px; border-radius:5px; margin-top:5px;">`;
+                        else content += `<br><a href="${msg.media_url}" target="_blank" style="color: blue; text-decoration: underline;">[📍 Attached ${msg.media_type}]</a>`;
+                    }
+                    logMessage(content, isMe ? "sent" : "received", isMe ? "You" : "Match");
+                });
+            } else {
+                alert("Failed to load history: " + (data.message || "Unknown error"));
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error connecting to API");
+        }
+    }
+
+    async function sendMessage() {
         const text = document.getElementById("message").value;
         const matchId = document.getElementById("matchId").value;
+        const token = document.getElementById("token").value;
+        const fileInput = document.getElementById("mediaUpload");
+        const sendBtn = document.getElementById("sendBtn");
 
-        if (socket && socket.connected && text) {
+        if (!socket || !socket.connected) return alert("You must connect first!");
+        if (!text && fileInput.files.length === 0) return;
+
+        try {
+            sendBtn.innerText = "Sending...";
+            sendBtn.disabled = true;
+
+            let finalMediaUrl = null;
+            let finalMediaType = null;
+
+            // Optional: Upload file if selected
+            if (fileInput.files.length > 0) {
+                const formData = new FormData();
+                formData.append("media", fileInput.files[0]);
+
+                const uploadRes = await fetch("http://localhost:3000/api/v1/users/media", {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${token}` },
+                    body: formData
+                });
+                
+                const uploadData = await uploadRes.json();
+                if (!uploadRes.ok) throw new Error(uploadData.message || "Failed to upload image");
+                
+                finalMediaUrl = uploadData.data.media_url;
+                finalMediaType = "image"; // Backend forces 'image' currently
+                logSystem(`☁️ Image uploaded to Cloudinary: ${finalMediaUrl}`);
+            }
+
+            // Emit the final payload to the chat WebSocket
             socket.emit("send_message", {
                 matchId: matchId,
-                text: text
+                text: text,
+                mediaUrl: finalMediaUrl,
+                mediaType: finalMediaType
             });
+            
+            // Clear inputs and typing
             document.getElementById("message").value = "";
+            fileInput.value = "";
+            socket.emit("stop_typing", { matchId });
+
+        } catch (err) {
+            console.error(err);
+            alert("Error sending message/media: " + err.message);
+        } finally {
+            sendBtn.innerText = "Send";
+            sendBtn.disabled = false;
         }
     }
 
