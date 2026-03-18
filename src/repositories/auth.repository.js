@@ -317,11 +317,13 @@ const googleLogin = async (email, uniqueUsername, hashedPassword, dummyDob, refr
             user = result.rows[0];
         }
 
-        await client.query(
-            `INSERT INTO refresh_tokens (user_id, token, expires_at)
-             VALUES ($1, $2, NOW() + INTERVAL '7 days')`,
-            [user.id, refreshToken]
-        );
+        if (refreshToken) {
+            await client.query(
+                `INSERT INTO refresh_tokens (user_id, token, expires_at)
+                 VALUES ($1, $2, NOW() + INTERVAL '7 days')`,
+                [user.id, refreshToken]
+            );
+        }
 
         await client.query('COMMIT');
         
