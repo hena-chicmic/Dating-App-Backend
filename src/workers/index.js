@@ -3,6 +3,7 @@
  * 
  * To run this independently of the API: `node src/workers/index.js`
  */
+require('../config/env');
 
 console.log('🚀 Worker Engine Booting...');
 
