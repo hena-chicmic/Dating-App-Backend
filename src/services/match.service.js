@@ -18,10 +18,10 @@ const checkAndCreateMatch = async (userId, targetUserId) => {
                 const io = getIO();
                 const payload = { matchId: newMatch.id, matchedWith: null };
 
-                const socketA = onlineUsers.get(parseInt(userId));
+                const socketA = await onlineUsers.get(parseInt(userId));
                 if (socketA) io.to(socketA).emit('new_match', { ...payload, matchedWith: targetUserId });
 
-                const socketB = onlineUsers.get(parseInt(targetUserId));
+                const socketB = await onlineUsers.get(parseInt(targetUserId));
                 if (socketB) io.to(socketB).emit('new_match', { ...payload, matchedWith: userId });
             } catch (err) {
                 
