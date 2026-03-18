@@ -5,7 +5,7 @@ const { hashPassword, comparePassword } = require('../utils/hash')
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateToken')
 const { verifyToken } = require('../utils/jwt')
 const { OAuth2Client } = require('google-auth-library')
-const emailService = require('./email.service')
+const { queueVerificationEmail, queuePasswordResetEmail } = require('../queues/email.queue')
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
@@ -23,13 +23,8 @@ const register = async (data) => {
 
     const user = await authRepository.register(data, hashedPassword, otp)
 
-    // Send the verification email to the user synchronously to ensure delivery config works
-    try {
-        await emailService.sendVerificationEmail(user.email, otp);
-    } catch (err) {
-        console.error("Email failed to send", err);
-        throw new Error("User registered, but verification email failed to send. Please contact support or try resending later.");
-    }
+    // Send the verification email using the BullMQ background worker queue
+    await queueVerificationEmail(user.email, otp);
 
     const accessToken = generateAccessToken({
         user_id: user.id
@@ -60,12 +55,8 @@ const resendVerification = async (email) => {
 
     const user = await authRepository.resendVerification(email, otp)
 
-    try {
-        await emailService.sendVerificationEmail(user.email, otp);
-    } catch (err) {
-        console.error("Resend email failed", err);
-        throw new Error("Failed to send verification email. Please try again later.");
-    }
+    // Send the verification email using the background worker queue
+    await queueVerificationEmail(user.email, otp);
 
     return true
 }
@@ -117,13 +108,8 @@ const forgotPassword = async (email) => {
         return userOrError
     }
 
-    // Dispatch the password reset email
-    try {
-        await emailService.sendPasswordResetEmail(email, otp);
-    } catch (err) {
-        console.error("Reset email failed", err);
-        throw new Error("Failed to send password reset email. Please try again later.");
-    }
+    // Dispatch the password reset email to the background queue worker
+    await queuePasswordResetEmail(email, otp);
     
     return true;
 }
