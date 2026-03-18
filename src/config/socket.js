@@ -1,21 +1,25 @@
-const { Server } = require("socket.io");
-const jwt = require("jsonwebtoken");
+const { createAdapter } = require("@socket.io/redis-adapter");
+const { getRedisClient } = require("./redis");
 
 let io;
 
 const initSocket = (server) => {
+  const pubClient = getRedisClient();
+  const subClient = pubClient.duplicate();
+
   io = new Server(server, {
     cors: {
       origin: "*",
       methods: ["GET", "POST", "DELETE"]
-    }
+    },
+    adapter: createAdapter(pubClient, subClient)
   });
 
   // Socket authentication middleware
   io.use((socket, next) => {
     try {
       const token = socket.handshake.auth.token || socket.handshake.query.token;
-      
+
       if (!token) {
         return next(new Error("Authentication error: No token provided"));
       }

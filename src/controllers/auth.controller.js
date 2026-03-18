@@ -12,7 +12,8 @@ const register = async (req, res, next) => {
         await authServices.register({ email, password, username, date_of_birth });
 
         res.status(201).json({
-            message: "user registered successfully.Please verify"
+            message: "user registered successfully.Please verify",
+            accessToken
         })
     } catch (error) {
         next(error)

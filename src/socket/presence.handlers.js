@@ -5,23 +5,31 @@ module.exports = (socket, io) => {
 
     socket.on('user_online', async (userId) => {
         userId = parseInt(userId);
-        onlineUsers.set(userId, socket.id);
+        // REDIS FIX: onlineUsers.set is now async
+        await onlineUsers.set(userId, socket.id);
         socket.userId = userId; 
         console.log(`User ${userId} is online (socket: ${socket.id})`);
 
         try {
             const matches = await matchRepository.fetchUserMatches(userId);
-            const onlineMatchIds = matches
-                .map(m => m.user_id)
-                .filter(id => onlineUsers.has(id));
+            
+            // REDIS FIX: Need to await the 'has' check for each match
+            const onlineMatchIds = [];
+            for (const m of matches) {
+                if (await onlineUsers.has(m.user_id)) {
+                    onlineMatchIds.push(m.user_id);
+                }
+            }
 
             socket.emit('online_status', { onlineUsers: onlineMatchIds });
-            matches.forEach(match => {
-                const matchSocketId = onlineUsers.get(match.user_id);
+
+            // REDIS FIX: Await get() for each match
+            for (const match of matches) {
+                const matchSocketId = await onlineUsers.get(match.user_id);
                 if (matchSocketId) {
                     io.to(matchSocketId).emit('friend_online', { userId });
                 }
-            });
+            }
         } catch (err) {
             console.error('Error in user_online:', err.message);
         }
@@ -32,17 +40,18 @@ module.exports = (socket, io) => {
         const userId = socket.userId;
         if (!userId) return;
 
-        onlineUsers.delete(userId);
+        // REDIS FIX: onlineUsers.delete is now async
+        await onlineUsers.delete(userId);
         console.log(`User ${userId} is offline`);
 
         try {
             const matches = await matchRepository.fetchUserMatches(userId);
-            matches.forEach(match => {
-                const matchSocketId = onlineUsers.get(match.user_id);
+            for (const match of matches) {
+                const matchSocketId = await onlineUsers.get(match.user_id);
                 if (matchSocketId) {
                     io.to(matchSocketId).emit('friend_offline', { userId });
                 }
-            });
+            }
         } catch (err) {
             console.error('Error in disconnect presence:', err.message);
         }

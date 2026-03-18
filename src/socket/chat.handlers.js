@@ -1,11 +1,11 @@
 const messageService = require('../services/message.service');
 const onlineUsers = require('./online-users');
-const notificationService = require('../services/notification.service');
+const { addNotificationJob } = require('../queues');
 const matchRepository = require('../repositories/match.repository');
 
 module.exports = (socket, io) => {
 
-   
+    
     socket.on('join_match_room', ({ matchId }) => {
         const room = `match_${matchId}`;
         socket.join(room);
@@ -22,15 +22,14 @@ module.exports = (socket, io) => {
 
             io.to(`match_${matchId}`).emit('receive_message', savedMessage);
 
-           
+            // Offload the message notification to the background worker
             try {
-                
                 const match = (await matchRepository.fetchUserMatches(senderId)).find(m => m.match_id === parseInt(matchId));
                 if (match) {
-                    await notificationService.createNotifications(match.user_id, 'new_message', matchId, `New message from ${match.username}`);
+                    await addNotificationJob(match.user_id, 'new_message', matchId, `New message from ${match.username}`);
                 }
             } catch (err) {
-                console.error('Notification error on send_message:', err.message);
+                console.error('Notification queueing error on send_message:', err.message);
             }
 
         } catch (err) {
@@ -56,7 +55,7 @@ module.exports = (socket, io) => {
         }
     });
 
-    
+
     socket.on('typing', ({ matchId }) => {
         socket.to(`match_${matchId}`).emit('user_typing', {
             userId: socket.userId,
