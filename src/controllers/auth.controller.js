@@ -9,10 +9,16 @@ const register = async (req, res, next) => {
             return res.status(400).json({ message: "Email, password, username, and date_of_birth are required" });
         }
 
-        await authServices.register({ email, password, username, date_of_birth });
+        const { accessToken, refreshToken, user } = await authServices.register({ email, password, username, date_of_birth });
+
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: false
+        })
 
         res.status(201).json({
-            message: "user registered successfully.Please verify"
+            message: "user registered successfully.Please verify",
+            accessToken
         })
     } catch (error) {
         next(error)

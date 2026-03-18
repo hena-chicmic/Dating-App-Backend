@@ -1,7 +1,6 @@
 const interactionRepository = require('../repositories/interaction.repository');
 const discoveryService = require('./discovery.service'); 
-const { addMatchJob } = require('../queues/match.queue');
-const { addNotificationJob } = require('../queues/notification.queue');
+const { addMatchJob, addNotificationJob } = require('../queues');
 
 const recordInteraction = async (userId, targetUserId, action) => {
     if (!['like', 'dislike'].includes(action)) {

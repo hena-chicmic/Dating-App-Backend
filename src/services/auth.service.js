@@ -5,7 +5,7 @@ const { hashPassword, comparePassword } = require('../utils/hash')
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateToken')
 const { verifyToken } = require('../utils/jwt')
 const { OAuth2Client } = require('google-auth-library')
-const { queueVerificationEmail, queuePasswordResetEmail } = require('../queues/email.queue')
+const { queueVerificationEmail, queuePasswordResetEmail } = require('../queues')
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 

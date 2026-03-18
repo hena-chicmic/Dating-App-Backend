@@ -1,6 +1,6 @@
 const messageService = require('../services/message.service');
 const onlineUsers = require('./online-users');
-const { addNotificationJob } = require('../queues/notification.queue');
+const { addNotificationJob } = require('../queues');
 const matchRepository = require('../repositories/match.repository');
 
 module.exports = (socket, io) => {
