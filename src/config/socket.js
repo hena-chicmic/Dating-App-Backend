@@ -21,7 +21,7 @@ const initSocket = (server) => {
       }
 
       const decoded = jwt.verify(token, process.env.ACCESS_SECRET);
-      socket.userId = decoded.id; // Attach userId to socket
+      socket.userId = decoded.user_id; // Attach userId from token
       next();
     } catch (err) {
       next(new Error("Authentication error: Invalid token"));
