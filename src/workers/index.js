@@ -1,7 +1,26 @@
-console.log('Booting up Background Worker Engine...');
+/**
+ * Worker Engine (The Microservice process)
+ * 
+ * To run this independently of the API: `node src/workers/index.js`
+ */
 
-// Import all active workers
+console.log('🚀 Worker Engine Booting...');
+
+// Import all background workers so they start listening to Redis
 require('./email.worker');
 require('./discovery.worker');
+require('./match.worker');
+require('./notification.worker'); // Activated!
 
-console.log('All Background Workers are running and listening to Redis!');
+console.log('✅ Email Worker: Listening...');
+console.log('✅ Discovery Worker: Listening...');
+console.log('✅ Matches Worker: Listening...');
+console.log('✅ Notifications Worker: Listening...');
+
+// Keep the process alive
+process.stdin.resume();
+
+process.on('SIGINT', () => {
+    console.log('Worker engine shutting down gracefully...');
+    process.exit(0);
+});
