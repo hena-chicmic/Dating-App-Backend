@@ -19,6 +19,21 @@ const recordInteraction = async (userId, targetUserId, action) => {
         if (potentialMatch) {
             // We append a flag so the controller knows to throw confetti on the frontend
             interaction.isMatch = true;
+        } else {
+            // Not a mutual match yet, just a regular like, so notify the target user
+            try {
+                // We must require notificationService locally or at top level. Let's do top level soon.
+                // Wait, it's not imported. Let me just use the imported one. I'll add the import too
+                const notificationService = require('./notification.service');
+                await notificationService.createNotifications(
+                    targetUserId, 
+                    'new_like', 
+                    userId, 
+                    "Someone liked your profile!"
+                );
+            } catch (err) {
+                console.error('Failed to create new_like notification:', err.message);
+            }
         }
     }
 

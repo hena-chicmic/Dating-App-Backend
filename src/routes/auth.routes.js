@@ -220,7 +220,7 @@ router.post('/refresh', refresh)
  *       200:
  *         description: Reset info sent
  */
-router.post('/forgot-password', strictAuthLimiter, validate(requestPasswordResetSchema), requestPasswordReset)
+router.post('/forgot-password', strictAuthLimiter, validate(requestPasswordResetSchema), forgotPassword)
 
 /**
  * @swagger

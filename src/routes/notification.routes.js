@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const notificationController = require('../controllers/notification.controller');
-const authMiddleware = require("../middleware/auth.middleware");
+const isAuthenticated = require("../middleware/auth.middleware");
 const validate = require('../middleware/validation.middleware');
 const { notificationIdParamSchema } = require('../validations/notification.validation');
 
-router.use(authMiddleware);
+router.use(isAuthenticated);
 
 /**
  * @swagger

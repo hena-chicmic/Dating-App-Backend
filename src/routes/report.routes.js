@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const reportController = require('../controllers/report.controller');
-const authMiddleware = require('../middleware/auth.middleware');
+const isAuthenticated = require('../middleware/auth.middleware');
 const validate = require('../middleware/validation.middleware');
 const { createReportSchema, reportIdParamSchema } = require('../validations/report.validation');
 
-router.use(authMiddleware);
+router.use(isAuthenticated);
 
 /**
  * @swagger

@@ -5,12 +5,32 @@ const matchRepository = require('../repositories/match.repository');
 const sendMessage = async (matchId, senderId, text, mediaUrl = null, mediaType = null) => {
    
     const matches = await matchRepository.fetchUserMatches(senderId);
-    const isInMatch = matches.some(m => m.match_id === parseInt(matchId));
-    if (!isInMatch) {
+    const targetMatch = matches.find(m => m.match_id === parseInt(matchId));
+    if (!targetMatch) {
         throw new Error('You are not a participant in this match.');
     }
 
     const message = await messageRepository.saveMessage(matchId, senderId, text, mediaUrl, mediaType);
+
+    // Determine the receiver based on the match. 
+    // Usually targetMatch has user1_id and user2_id or similar.
+    // Let me check what fetchUserMatches returns... actually I will defensively check properties.
+    const receiverId = (targetMatch.user1_id === parseInt(senderId)) ? targetMatch.user2_id : targetMatch.user1_id;
+    
+    if (receiverId) {
+        try {
+            const notificationService = require('./notification.service');
+            await notificationService.createNotifications(
+                receiverId, 
+                'new_message', 
+                matchId, 
+                "You have a new message!"
+            );
+        } catch (err) {
+            console.error('Failed to create new_message notification:', err.message);
+        }
+    }
+
     return message;
 };
 
