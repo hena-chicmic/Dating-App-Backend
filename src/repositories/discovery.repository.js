@@ -46,6 +46,8 @@ class DiscoveryRepository {
             -- Join the logged-in user's interests ONLY if they match the target's
             LEFT JOIN user_interests ui2 ON ui1.interest_id = ui2.interest_id AND ui2.user_id = $1
             WHERE u.id != $1
+            AND u.is_active=true
+            AND u.is_banned=false
             AND u.gender = $2
             -- Relaxed Age: Up to 5 years outside their preference
             AND EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN ($3 - 5) AND ($4 + 5)
