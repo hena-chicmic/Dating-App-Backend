@@ -64,8 +64,9 @@ const updateMyProfile = async (userId, profileData) => {
                 min_preferred_age=COALESCE($4, min_preferred_age),
                 max_preferred_age=COALESCE($5, max_preferred_age),
                 bio=COALESCE($6, bio),
+                date_of_birth=COALESCE($7, date_of_birth),
                 updated_at=NOW()
-            WHERE id=$7`,
+            WHERE id=$8`,
             [
                 username,
                 gender,
@@ -73,6 +74,7 @@ const updateMyProfile = async (userId, profileData) => {
                 min_preferred_age,
                 max_preferred_age,
                 bio,
+                profileData.date_of_birth,
                 userId
             ]
         );
@@ -262,7 +264,7 @@ const getUserProfile = async (requestingUserId, targetUserId) => {
                p.profile_photo_url
         FROM users u
         LEFT JOIN user_profiles p ON u.id = p.user_id
-        WHERE u.id = $1
+        WHERE u.id = $1 AND u.is_banned = FALSE
     `;
     const result = await db.query(query, [targetUserId]);
 

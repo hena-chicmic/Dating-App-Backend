@@ -160,7 +160,7 @@ const googleLogin = async (idToken) => {
     })
 
     const payload = ticket.getPayload()
-    const { email, name } = payload
+    const { email, name, picture } = payload
 
     const randomPassword = crypto.randomBytes(32).toString('hex')
     const hashedPassword = await hashPassword(randomPassword)
@@ -171,7 +171,7 @@ const googleLogin = async (idToken) => {
 
     const dummyDob = '2000-01-01'
 
-    const user = await authRepository.googleLogin(email, uniqueUsername, hashedPassword, dummyDob, null)
+    const user = await authRepository.googleLogin(email, uniqueUsername, hashedPassword, dummyDob, picture, null)
 
     if (user.is_banned) {
         throw new Error("Your account has been banned due to multiple violations.")

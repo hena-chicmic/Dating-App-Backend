@@ -24,6 +24,7 @@ const updateProfileSchema = Joi.object({
         .max(100)
         .required(),
 
+    date_of_birth: Joi.date().iso().max('now').message('Birthday cannot be in the future'),
     latitude: Joi.number().min(-90).max(90).allow(null),
     longitude: Joi.number().min(-180).max(180).allow(null)
 });
