@@ -1,6 +1,6 @@
 const messageRepository = require('../repositories/message.repository');
 const matchRepository = require('../repositories/match.repository');
-
+const { addNotificationJob } = require('../queues/notification.queue');
 
 const sendMessage = async (matchId, senderId, text, mediaUrl = null, mediaType = null) => {
    
@@ -19,7 +19,7 @@ const sendMessage = async (matchId, senderId, text, mediaUrl = null, mediaType =
     
     if (receiverId) {
         try {
-            const { addNotificationJob } = require('../queues/notification.queue');
+            
             await addNotificationJob(
                 receiverId, 
                 'new_message', 
