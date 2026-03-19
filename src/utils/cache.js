@@ -1,8 +1,5 @@
 const { getRedisClient } = require('../config/redis');
 
-/**
- * Get a value from cache. Returns null if key not found or Redis is down.
- */
 const get = async (key) => {
     try {
         const client = getRedisClient();
@@ -14,9 +11,6 @@ const get = async (key) => {
     }
 };
 
-/**
- * Store a value in cache with an optional TTL (seconds).
- */
 const set = async (key, value, ttlSeconds = 300) => {
     try {
         const client = getRedisClient();
@@ -26,9 +20,6 @@ const set = async (key, value, ttlSeconds = 300) => {
     }
 };
 
-/**
- * Delete a specific cache key.
- */
 const del = async (key) => {
     try {
         const client = getRedisClient();
@@ -38,9 +29,6 @@ const del = async (key) => {
     }
 };
 
-/**
- * Delete all keys matching a pattern (e.g. "feed:123:*").
- */
 const delByPattern = async (pattern) => {
     try {
         const client = getRedisClient();

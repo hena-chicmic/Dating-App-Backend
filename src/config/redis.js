@@ -10,7 +10,7 @@ const getRedisClient = () => {
             retryStrategy: (times) => {
                 if (times > 3) {
                     console.warn('Redis connection failed after 3 retries. Caching disabled.');
-                    return null; // stop retrying
+                    return null;
                 }
                 return Math.min(times * 200, 2000);
             }
