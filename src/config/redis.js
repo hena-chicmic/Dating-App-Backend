@@ -15,7 +15,7 @@ const getRedisClient = () => {
                 return Math.min(times * 200, 2000);
             }
         });
-        
+
         redisClient.on('connect', () => console.log('✅ Redis connected'));
         redisClient.on('error', (err) => console.warn('⚠️  Redis error:', err.message));
     }

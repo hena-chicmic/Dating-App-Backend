@@ -1,6 +1,3 @@
--- Migration: 003_create_interests_table
--- Description: create interests master table
-
 CREATE TABLE IF NOT EXISTS interests (
 
     id SERIAL PRIMARY KEY,

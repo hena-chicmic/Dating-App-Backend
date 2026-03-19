@@ -1,6 +1,3 @@
--- Migration: 004_create_user_interests_table
--- Description: create mapping table between users and interests
-
 CREATE TABLE IF NOT EXISTS user_interests (
 
     user_id INTEGER NOT NULL,

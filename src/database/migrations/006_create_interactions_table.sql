@@ -1,6 +1,3 @@
--- Migration: 006_create_interactions_table
--- Description: store user likes and dislikes
-
 CREATE TABLE IF NOT EXISTS interactions (
 
     id SERIAL PRIMARY KEY,

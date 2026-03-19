@@ -1,6 +1,3 @@
--- Migration: 005_create_user_media_table
--- Description: store media uploaded by users
-
 CREATE TABLE IF NOT EXISTS user_media (
 
     id SERIAL PRIMARY KEY,

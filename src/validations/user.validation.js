@@ -35,7 +35,7 @@ const updatePreferencesSchema = Joi.object({
     preferred_age_max: Joi.number().integer().min(18).required(),
     max_distance_km: Joi.number().integer().min(1).max(500)
 }).custom((value, helpers) => {
-    // Ensure min age is not greater than max age
+
     if (value.preferred_age_min > value.preferred_age_max) {
         return helpers.message('Minimum age cannot be greater than maximum age');
     }

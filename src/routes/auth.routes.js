@@ -255,5 +255,4 @@ router.post('/forgot-password', strictAuthLimiter, validate(requestPasswordReset
  */
 router.post('/reset-password', validate(resetPasswordSchema), resetPassword)
 
-
 module.exports = router

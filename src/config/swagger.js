@@ -34,7 +34,7 @@ const options = {
       },
     },
   },
-  // Look for swagger docs in our route files
+
   apis: ['./src/routes/*.js'],
 };
 

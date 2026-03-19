@@ -5,8 +5,7 @@ const { hashPassword } = require('../utils/hash');
 const seed = async () => {
     try {
         console.log('Starting Database Seeding...');
-        
-        // 1. Seed Users
+
         const usersToSeed = [
             {
                 email: 'alice@example.com',
@@ -42,7 +41,7 @@ const seed = async () => {
             if (existing.rows.length === 0) {
                 const hashedPass = await hashPassword(u.password);
                 const result = await db.query(
-                    `INSERT INTO users (email, password_hash, username, date_of_birth, gender, interested_in, is_verified) 
+                    `INSERT INTO users (email, password_hash, username, date_of_birth, gender, interested_in, is_verified)
                      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
                     [u.email, hashedPass, u.username, u.date_of_birth, u.gender, u.interested_in, u.is_verified]
                 );

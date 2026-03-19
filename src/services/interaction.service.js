@@ -1,5 +1,5 @@
 const interactionRepository = require('../repositories/interaction.repository');
-const discoveryService = require('./discovery.service'); 
+const discoveryService = require('./discovery.service');
 const { addMatchJob, addNotificationJob } = require('../queues');
 
 const recordInteraction = async (userId, targetUserId, action) => {
@@ -13,17 +13,15 @@ const recordInteraction = async (userId, targetUserId, action) => {
 
     const interaction = await interactionRepository.saveInteraction(userId, targetUserId, action);
 
-    // Business Logic: If it's a 'like', dispatch jobs to the background queues
     if (action === 'like') {
-        // 1. Dispatch Match check to background worker
+
         await addMatchJob(userId, targetUserId);
 
-        // 2. Dispatch a standard notification for the Like
         try {
             await addNotificationJob(
-                targetUserId, 
-                'new_like', 
-                userId, 
+                targetUserId,
+                'new_like',
+                userId,
                 "Someone liked your profile!"
             );
         } catch (err) {
@@ -31,7 +29,6 @@ const recordInteraction = async (userId, targetUserId, action) => {
         }
     }
 
-    // Invalidate discovery feed cache so user sees fresh recommendations
     await discoveryService.invalidateFeed(userId);
 
     return interaction;

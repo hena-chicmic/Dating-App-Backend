@@ -1,7 +1,7 @@
 const discoveryRepository = require('../repositories/discovery.repository');
 const cache = require('../utils/cache');
 
-const TTL_FEED = 2 * 60; // 2 minutes
+const TTL_FEED = 2 * 60;
 
 const getFeed = async (userId, page = 1) => {
     const key = `feed:${userId}:page:${page}`;
@@ -16,9 +16,6 @@ const getFeed = async (userId, page = 1) => {
     return recommendations;
 };
 
-/**
- * Invalidate a user's discovery feed cache (call after swipe).
- */
 const invalidateFeed = async (userId) => {
     await cache.delByPattern(`feed:${userId}:*`);
 };
