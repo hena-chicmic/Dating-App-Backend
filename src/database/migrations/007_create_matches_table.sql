@@ -22,7 +22,6 @@ CREATE TABLE IF NOT EXISTS matches (
 
     CONSTRAINT check_different_users CHECK (user1_id <> user2_id)
 
-   
 );
 
     CREATE INDEX IF NOT EXISTS idx_matches_user1

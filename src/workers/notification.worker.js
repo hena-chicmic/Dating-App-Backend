@@ -4,10 +4,10 @@ const notificationService = require('../services/notification.service');
 
 const notificationWorker = new Worker('notification-queue', async (job) => {
     console.log(`[Queue] Processing job ${job.id} of type ${job.name}...`);
-    
+
     if (job.name === 'send-notification') {
         const { userId, type, referenceId, message } = job.data;
-        
+
         await notificationService.createNotifications(userId, type, referenceId, message);
     }
 }, {

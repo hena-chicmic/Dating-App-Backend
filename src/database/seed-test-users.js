@@ -2,7 +2,6 @@ require('../config/env');
 const db = require('../config/db');
 const { hashPassword } = require('../utils/hash');
 
-// The schema uses `username` rather than a separate full-name column.
 const testUsers = [
     {
         username: 'Aarav Mehta',

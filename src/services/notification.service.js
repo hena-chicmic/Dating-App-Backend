@@ -1,7 +1,7 @@
 const notificationRepository = require('../repositories/notification.repository');
 const cache = require('../utils/cache');
 
-const TTL_NOTIFICATIONS = 60; // 60 seconds
+const TTL_NOTIFICATIONS = 60;
 
 const getNotifications = async (userId) => {
     const key = `user:${userId}:notifications`;

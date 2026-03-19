@@ -1,9 +1,8 @@
 const reportRepository = require('../repositories/report.repository');
 const userRepository = require('../repositories/user.repository');
 
-
 const reportUser = async (reporterId, reportedUserId, reason, description) => {
-    
+
     if (!reportedUserId || !reason) {
         throw new Error('Reported user ID and reason are required.');
     }
@@ -20,7 +19,6 @@ const reportUser = async (reporterId, reportedUserId, reason, description) => {
     return await reportRepository.createReportAndBlock(reporterId, reportedUserId, reason, description);
 };
 
-
 const getReport = async (reportId) => {
     const report = await reportRepository.getReportById(reportId);
     if (!report) {
@@ -28,7 +26,6 @@ const getReport = async (reportId) => {
     }
     return report;
 };
-
 
 const getMyReports = async (userId) => {
     return await reportRepository.getReportsByReporter(userId);

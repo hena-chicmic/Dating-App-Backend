@@ -6,15 +6,12 @@ const onlineUsers = require('../socket/online-users');
 const { addNotificationJob } = require('../queues/notification.queue');
 const cache = require('../utils/cache');
 
-/**
- * Worker: Handles background match creation and alerting.
- */
 const matchWorker = new Worker('match-queue', async (job) => {
     console.log(`[Queue] Processing job ${job.id} of type ${job.name}...`);
 
     if (job.name === 'check-mutual-match') {
         const { userId, targetUserId } = job.data;
-        
+
         try {
             const isMutual = await matchRepository.checkMutualLike(userId, targetUserId);
 
@@ -24,9 +21,6 @@ const matchWorker = new Worker('match-queue', async (job) => {
             if (newMatch) {
                 console.log(`[Worker] Matching Logic: SUCCESS. Match ID: ${newMatch.id}`);
 
-                // Real-time socket alerts
-                // NOTE: This requires Socket.io Redis Adapter to work across processes!
-                // Currently safely fails with 'Socket not initialized' since it's in a separate process
                 try {
                     const io = getIO();
                     const payload = { matchId: newMatch.id, matchedWith: null };
@@ -40,11 +34,9 @@ const matchWorker = new Worker('match-queue', async (job) => {
                     console.error('[Worker] Socket alert failed (Redis Adapter recommended):', socketErr.message);
                 }
 
-                // Push asynchronous notification jobs
                 await addNotificationJob(userId, 'new_match', newMatch.id, "You have a new match!");
                 await addNotificationJob(targetUserId, 'new_match', newMatch.id, "You have a new match!");
 
-                // Invalidate local cache
                 await cache.del(`user:${userId}:matches`);
                 await cache.del(`user:${targetUserId}:matches`);
             }
@@ -56,7 +48,7 @@ const matchWorker = new Worker('match-queue', async (job) => {
     }
 }, {
     connection: getRedisClient(),
-    concurrency: 2 
+    concurrency: 2
 });
 
 matchWorker.on('completed', job => {

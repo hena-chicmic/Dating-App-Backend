@@ -1,6 +1,5 @@
 const db = require('../config/db');
 
-
 const createReportAndBlock = async (reporterId, reportedUserId, reason, description) => {
     const client = await db.connect();
     try {
@@ -22,16 +21,15 @@ const createReportAndBlock = async (reporterId, reportedUserId, reason, descript
         await client.query(blockQuery, [reporterId, reportedUserId]);
 
         const matchQuery = `
-            UPDATE matches 
-            SET is_active = FALSE 
+            UPDATE matches
+            SET is_active = FALSE
             WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1);
         `;
         await client.query(matchQuery, [reporterId, reportedUserId]);
 
-        // Auto-Ban Logic: Check if >= 3 distinct reporters
         const countQuery = `
-            SELECT COUNT(DISTINCT reporter_id) AS "reporterCount" 
-            FROM reports 
+            SELECT COUNT(DISTINCT reporter_id) AS "reporterCount"
+            FROM reports
             WHERE reported_user_id = $1;
         `;
         const countResult = await client.query(countQuery, [reportedUserId]);
@@ -39,7 +37,7 @@ const createReportAndBlock = async (reporterId, reportedUserId, reason, descript
 
         if (count >= 5) {
             await client.query(
-                `UPDATE users SET is_banned = TRUE, is_active = FALSE WHERE id = $1`, 
+                `UPDATE users SET is_banned = TRUE, is_active = FALSE WHERE id = $1`,
                 [reportedUserId]
             );
         }
@@ -54,11 +52,10 @@ const createReportAndBlock = async (reporterId, reportedUserId, reason, descript
     }
 };
 
-
 const getReportById = async (reportId) => {
     const query = `
-        SELECT r.*, 
-               u1.username AS reporter_name, 
+        SELECT r.*,
+               u1.username AS reporter_name,
                u2.username AS reported_user_name
         FROM reports r
         JOIN users u1 ON r.reporter_id = u1.id
@@ -68,7 +65,6 @@ const getReportById = async (reportId) => {
     const result = await db.query(query, [reportId]);
     return result.rows[0];
 };
-
 
 const getReportsByReporter = async (reporterId) => {
     const query = `

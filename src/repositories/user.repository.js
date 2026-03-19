@@ -165,7 +165,6 @@ const setPrimaryMedia = async (userId, mediaId) => {
     try {
         await client.query("BEGIN");
 
-        // Check media ownership
         const checkMedia = await client.query(
             `SELECT id FROM user_media WHERE id = $1 AND user_id = $2`,
             [mediaId, userId]
@@ -175,13 +174,11 @@ const setPrimaryMedia = async (userId, mediaId) => {
             throw new Error("Media not found or does not belong to user");
         }
 
-        // Remove previous primary
         await client.query(
             `UPDATE user_media SET is_primary = FALSE WHERE user_id = $1`,
             [userId]
         );
 
-        // Set new primary
         await client.query(
             `UPDATE user_media SET is_primary = TRUE WHERE id = $1`,
             [mediaId]
@@ -207,7 +204,7 @@ const getAllInterests = async () => {
 
 const getMyInterests = async (userId) => {
     const query = `
-        SELECT i.id, i.name 
+        SELECT i.id, i.name
         FROM interests i
         JOIN user_interests ui ON i.id = ui.interest_id
         WHERE ui.user_id = $1
@@ -220,30 +217,29 @@ const updateMyInterests = async (userId, interestIds) => {
     const client = await db.connect();
     try {
         await client.query('BEGIN');
-        
+
         await client.query(`DELETE FROM user_interests WHERE user_id = $1`, [userId]);
-        
+
         if (interestIds && interestIds.length > 0) {
-            // Build the multi-insert query dynamically: ($1, $2), ($1, $3), etc.
+
             const values = [];
-            const queryBindings = [userId]; // $1
-            
+            const queryBindings = [userId];
+
             interestIds.forEach((id, index) => {
                 queryBindings.push(id);
-                // index + 2 because $1 is userId
+
                 values.push(`($1, $${index + 2})`);
             });
 
             const insertQuery = `
-                INSERT INTO user_interests (user_id, interest_id) 
+                INSERT INTO user_interests (user_id, interest_id)
                 VALUES ${values.join(', ')}
             `;
             await client.query(insertQuery, queryBindings);
         }
-        
+
         await client.query('COMMIT');
-        
-        // Return the fresh list of interests
+
         return await getMyInterests(userId);
     } catch (error) {
         await client.query('ROLLBACK');
@@ -255,35 +251,33 @@ const updateMyInterests = async (userId, interestIds) => {
 
 const getUserProfile = async (requestingUserId, targetUserId) => {
     const query = `
-        SELECT u.id, 
-               u.username, 
-               EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) as age, 
+        SELECT u.id,
+               u.username,
+               EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) as age,
                u.gender,
                u.bio,
-               p.height, 
-               p.location_city, 
-               p.location_country, 
+               p.height,
+               p.location_city,
+               p.location_country,
                p.profile_photo_url
         FROM users u
         LEFT JOIN user_profiles p ON u.id = p.user_id
         WHERE u.id = $1
     `;
     const result = await db.query(query, [targetUserId]);
-    
+
     if (!result.rows.length) return null;
-    
+
     const profile = result.rows[0];
-    
-    // Fetch their media
+
     const mediaResult = await db.query(
         `SELECT id, media_url, is_primary FROM user_media WHERE user_id = $1`,
         [targetUserId]
     );
     profile.media = mediaResult.rows;
-    
-    // Fetch their interests
+
     profile.interests = await getMyInterests(targetUserId);
-    
+
     return profile;
 };
 
@@ -291,10 +285,10 @@ const deactivateAccount = async (userId) => {
     const client = await db.connect();
     try {
         await client.query('BEGIN');
-        
+
         await client.query(`UPDATE users SET is_active = FALSE WHERE id = $1`, [userId]);
         await client.query(`DELETE FROM interactions WHERE user_id = $1 OR target_user_id = $1`, [userId]);
-        
+
         await client.query('COMMIT');
         return { success: true };
     } catch (error) {

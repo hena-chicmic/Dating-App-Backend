@@ -2,7 +2,6 @@ const onlineUsers = require('./online-users');
 
 module.exports = (socket, io) => {
 
-
     socket.on('call_user', ({ targetUserId, matchId, offer }) => {
         const targetSocketId = onlineUsers.get(parseInt(targetUserId));
         if (!targetSocketId) {
@@ -16,7 +15,6 @@ module.exports = (socket, io) => {
         });
     });
 
-    
     socket.on('call_answer', ({ callerId, matchId, answer }) => {
         const callerSocketId = onlineUsers.get(parseInt(callerId));
         if (!callerSocketId) return;
@@ -28,7 +26,6 @@ module.exports = (socket, io) => {
         });
     });
 
-    
     socket.on('ice_candidate', ({ targetUserId, candidate }) => {
         const targetSocketId = onlineUsers.get(parseInt(targetUserId));
         if (!targetSocketId) return;
@@ -39,7 +36,6 @@ module.exports = (socket, io) => {
         });
     });
 
-   
     socket.on('call_end', ({ targetUserId, matchId }) => {
         const targetSocketId = onlineUsers.get(parseInt(targetUserId));
         if (!targetSocketId) return;
@@ -50,7 +46,6 @@ module.exports = (socket, io) => {
         });
     });
 
-    
     socket.on('call_reject', ({ callerId, matchId }) => {
         const callerSocketId = onlineUsers.get(parseInt(callerId));
         if (!callerSocketId) return;

@@ -8,7 +8,6 @@ const register = async (data, hashedPassword, otp) => {
     try {
         await client.query('BEGIN');
 
-        // 1. Insert user
         const result = await client.query(
             `INSERT INTO users (username, email, password_hash, date_of_birth)
              VALUES ($1,$2,$3,$4)
@@ -17,13 +16,11 @@ const register = async (data, hashedPassword, otp) => {
         );
         const user = result.rows[0];
 
-        // 2. Insert user profile
         await client.query(
             `INSERT INTO user_profiles (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
             [user.id]
         );
 
-        // 3. Insert email verification OTP
         await client.query(
             `INSERT INTO email_verifications (user_id, OTPtoken, expires_at)
              VALUES ($1,$2, NOW() + INTERVAL '15 minutes')`,
@@ -55,7 +52,6 @@ const verifyEmail = async (email, otp) => {
     try {
         await client.query('BEGIN');
 
-        // 1. Check user exists
         const userResult = await client.query(
             `SELECT id FROM users WHERE email=$1`,
             [email]
@@ -66,7 +62,6 @@ const verifyEmail = async (email, otp) => {
         }
         const userId = userResult.rows[0].id;
 
-        // 2. Check valid OTP
         const otpResult = await client.query(
             `SELECT * FROM email_verifications
              WHERE user_id=$1 AND OTPtoken=$2`,
@@ -83,13 +78,11 @@ const verifyEmail = async (email, otp) => {
             throw new Error("OTP expired");
         }
 
-        // 3. Mark as verified
         await client.query(
             `UPDATE users SET is_verified = TRUE WHERE id = $1`,
             [userId]
         );
 
-        // 4. Delete OTP
         await client.query(
             `DELETE FROM email_verifications WHERE user_id=$1`,
             [userId]
@@ -111,7 +104,6 @@ const resendVerification = async (email, newOtp) => {
     try {
         await client.query('BEGIN');
 
-        // Look up user
         const userResult = await client.query(
             `SELECT id, email, is_verified FROM users WHERE email=$1`,
             [email]
@@ -127,7 +119,6 @@ const resendVerification = async (email, newOtp) => {
             throw new Error("Email already verified");
         }
 
-        // Update or insert OTP
         await client.query(
             `UPDATE email_verifications
              SET OTPtoken=$1,
@@ -149,11 +140,10 @@ const resendVerification = async (email, newOtp) => {
 
 const login = async (email, refreshToken) => {
     const client = await db.connect();
-    
+
     try {
         await client.query('BEGIN');
 
-        // Fetch user
         const result = await client.query(
             `SELECT id,username,email,password_hash,is_verified,is_banned
              FROM users
@@ -166,7 +156,7 @@ const login = async (email, refreshToken) => {
         }
 
         const user = result.rows[0];
-        
+
         if (refreshToken) {
             await client.query(
                 `INSERT INTO refresh_tokens (user_id, token, expires_at)
@@ -221,7 +211,6 @@ const resetPassword = async (email, newHashedPassword, otp) => {
     try {
         await client.query('BEGIN');
 
-        // 1. Find the user by email
         const userResult = await client.query(
             `SELECT id FROM users WHERE email=$1`,
             [email]
@@ -233,7 +222,6 @@ const resetPassword = async (email, newHashedPassword, otp) => {
 
         const userId = userResult.rows[0].id;
 
-        // 2. Find OTP
         const result = await client.query(
             `SELECT user_id, expires_at
              FROM password_resets
@@ -251,13 +239,11 @@ const resetPassword = async (email, newHashedPassword, otp) => {
             throw new Error("Reset OTP expired");
         }
 
-        // 3. Update password
         await client.query(
             `UPDATE users SET password_hash=$1 WHERE id=$2`,
             [newHashedPassword, userId]
         );
 
-        // 4. Delete OTP
         await client.query(
             `DELETE FROM password_resets WHERE user_id=$1`,
             [userId]
@@ -278,7 +264,7 @@ const refresh = async (token) => {
         "SELECT * FROM refresh_tokens WHERE token=$1 AND expires_at > NOW()",
         [token]
     );
-    
+
     return result.rows.length > 0;
 };
 
@@ -326,7 +312,7 @@ const googleLogin = async (email, uniqueUsername, hashedPassword, dummyDob, refr
         }
 
         await client.query('COMMIT');
-        
+
         return user;
     } catch (error) {
         await client.query('ROLLBACK');

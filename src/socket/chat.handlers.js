@@ -5,14 +5,12 @@ const matchRepository = require('../repositories/match.repository');
 
 module.exports = (socket, io) => {
 
-   
     socket.on('join_match_room', ({ matchId }) => {
         const room = `match_${matchId}`;
         socket.join(room);
         console.log(`Socket ${socket.id} joined room: ${room}`);
     });
 
-    
     socket.on('send_message', async ({ matchId, text, mediaUrl = null, mediaType = null }) => {
         try {
             const senderId = socket.userId;
@@ -22,9 +20,8 @@ module.exports = (socket, io) => {
 
             io.to(`match_${matchId}`).emit('receive_message', savedMessage);
 
-           
             try {
-                
+
                 const match = (await matchRepository.fetchUserMatches(senderId)).find(m => m.match_id === parseInt(matchId));
                 if (match) {
                     await addNotificationJob(match.user_id, 'new_message', matchId, `New message from ${match.username}`);
@@ -38,7 +35,6 @@ module.exports = (socket, io) => {
             socket.emit('error', { message: err.message });
         }
     });
-
 
     socket.on('mark_read', async ({ matchId }) => {
         try {
@@ -56,7 +52,6 @@ module.exports = (socket, io) => {
         }
     });
 
-    
     socket.on('typing', ({ matchId }) => {
         socket.to(`match_${matchId}`).emit('user_typing', {
             userId: socket.userId,
@@ -70,7 +65,6 @@ module.exports = (socket, io) => {
             matchId,
         });
     });
-
 
     socket.on('leave_match_room', ({ matchId }) => {
         const room = `match_${matchId}`;
