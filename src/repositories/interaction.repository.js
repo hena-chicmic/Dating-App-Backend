@@ -59,6 +59,51 @@ class InteractionRepository {
         const result = await db.query(query, [userId]);
         return result.rows;
     }
+
+    /**
+     * Blocks a user and breaks any existing match
+     */
+    async blockUser(blockerId, blockedId) {
+        const client = await db.connect();
+        try {
+            await client.query('BEGIN');
+
+            const blockQuery = `
+                INSERT INTO blocks (blocker_id, blocked_id)
+                VALUES ($1, $2)
+                ON CONFLICT (blocker_id, blocked_id) DO NOTHING;
+            `;
+            await client.query(blockQuery, [blockerId, blockedId]);
+
+            const matchQuery = `
+                UPDATE matches 
+                SET is_active = FALSE 
+                WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1);
+            `;
+            await client.query(matchQuery, [blockerId, blockedId]);
+
+            await client.query('COMMIT');
+            return true;
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    /**
+     * Unblocks a previously blocked user
+     */
+    async unblockUser(blockerId, blockedId) {
+        const query = `
+            DELETE FROM blocks 
+            WHERE blocker_id = $1 AND blocked_id = $2 
+            RETURNING id;
+        `;
+        const result = await db.query(query, [blockerId, blockedId]);
+        return result.rowCount > 0;
+    }
 }
 
 module.exports = new InteractionRepository();

@@ -45,8 +45,25 @@ const getReceivedLikes = async (userId) => {
     return await interactionRepository.getReceivedLikes(userId);
 };
 
+const unblockUser = async (userId, targetUserId) => {
+    const success = await interactionRepository.unblockUser(userId, targetUserId);
+    if (!success) {
+        throw new Error("Block record not found.");
+    }
+    return success;
+};
+
+const blockUser = async (userId, targetUserId) => {
+    if (userId === parseInt(targetUserId)) {
+        throw new Error("You cannot block yourself.");
+    }
+    return await interactionRepository.blockUser(userId, targetUserId);
+};
+
 module.exports = {
     recordInteraction,
     getSentLikes,
-    getReceivedLikes
+    getReceivedLikes,
+    unblockUser,
+    blockUser
 };

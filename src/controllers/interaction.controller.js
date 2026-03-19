@@ -48,8 +48,42 @@ const getReceivedLikes = async (req, res, next) => {
     }
 };
 
+const unblockUser = async (req, res, next) => {
+    try {
+        const userId = req.user.user_id;
+        const { targetUserId } = req.params;
+
+        await interactionService.unblockUser(userId, targetUserId);
+
+        res.status(200).json({
+            success: true,
+            message: "User unblocked successfully."
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const blockUser = async (req, res, next) => {
+    try {
+        const userId = req.user.user_id;
+        const { targetUserId } = req.params;
+
+        await interactionService.blockUser(userId, targetUserId);
+
+        res.status(200).json({
+            success: true,
+            message: "User blocked successfully."
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     swipe,
     getSentLikes,
-    getReceivedLikes
+    getReceivedLikes,
+    unblockUser,
+    blockUser
 };

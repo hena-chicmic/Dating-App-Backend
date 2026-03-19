@@ -23,7 +23,6 @@ const register = async (data) => {
 
     const user = await authRepository.register(data, hashedPassword, otp)
 
-    // Send the verification email using the BullMQ background worker queue
     await queueVerificationEmail(user.email, otp);
 
     const accessToken = generateAccessToken({
@@ -75,11 +74,18 @@ const login = async (data) => {
 
     const user = loginResult.user
 
+    if (user.is_banned) {
+        throw new Error("Your account has been banned due to multiple violations.")
+    }
+
     const match = await comparePassword(password, user.password_hash)
 
     if (!match) {
         throw new Error("Invalid email or password")
     }
+
+    // Auto-Reactivate account in case it was previously deactivated
+    await authRepository.reactivateUser(user.id)
 
     const accessToken = generateAccessToken({
         user_id: user.id
@@ -176,6 +182,13 @@ const googleLogin = async (idToken) => {
     const dummyDob = '2000-01-01'
 
     const user = await authRepository.googleLogin(email, uniqueUsername, hashedPassword, dummyDob, null)
+
+    if (user.is_banned) {
+        throw new Error("Your account has been banned due to multiple violations.")
+    }
+
+    // Auto-Reactivate account in case it was previously deactivated
+    await authRepository.reactivateUser(user.id)
 
     const accessToken = generateAccessToken({ user_id: user.id })
     const refreshToken = generateRefreshToken({ user_id: user.id, type: "refresh" })

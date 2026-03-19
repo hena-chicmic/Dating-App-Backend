@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { swipe, getSentLikes, getReceivedLikes } = require('../controllers/interaction.controller');
+const { swipe, getSentLikes, getReceivedLikes, unblockUser, blockUser } = require('../controllers/interaction.controller');
 const isAuthenticated = require('../middleware/auth.middleware');
 const validate = require('../middleware/validation.middleware');
 const { swipeSchema } = require('../validations/interaction.validation');
@@ -71,5 +71,40 @@ router.get('/likes/sent', isAuthenticated, getSentLikes);
  *         description: List of received likes
  */
 router.get('/likes/received', isAuthenticated, getReceivedLikes);
+
+/**
+ * @swagger
+ * /interactions/blocks/{targetUserId}:
+ *   delete:
+ *     summary: Unblock a previously blocked user
+ *     tags: [Interactions]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User unblocked successfully
+ */
+router.delete('/blocks/:targetUserId', isAuthenticated, unblockUser);
+
+/**
+ * @swagger
+ * /interactions/blocks/{targetUserId}:
+ *   post:
+ *     summary: Block a user without reporting
+ *     tags: [Interactions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: targetUserId
+ *         required: true
+ *         description: The ID of the user to block.
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: User blocked successfully
+ */
+router.post('/blocks/:targetUserId', isAuthenticated, blockUser);
 
 module.exports = router;
