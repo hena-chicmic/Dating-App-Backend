@@ -1,19 +1,18 @@
 const db = require('../config/db');
 
 class MatchRepository {
-    
+
     async checkMutualLike(userA, userB) {
         const query = `
-            SELECT 1 FROM interactions 
+            SELECT 1 FROM interactions
             WHERE user_id = $1 AND target_user_id = $2 AND action = 'like'
         `;
         const result = await db.query(query, [userB, userA]);
         return result.rows.length > 0;
     }
 
-    
     async createMatch(userA, userB) {
-       
+
         const user1 = Math.min(userA, userB);
         const user2 = Math.max(userA, userB);
 
@@ -27,10 +26,9 @@ class MatchRepository {
         return result.rows[0];
     }
 
-    
     async fetchUserMatches(userId) {
         const query = `
-            SELECT 
+            SELECT
                 m.id as match_id,
                 m.created_at as matched_on,
                 u.id as user_id,

@@ -1,10 +1,9 @@
 const notificationService=require('../services/notification.service')
 
-
 const getNotifications=async(req,res,next)=>{
     try{
         const userId=req.user.user_id
-       
+
         const notification=await notificationService.getNotifications(userId)
         res.status(200).json({
             success:true,
@@ -40,9 +39,6 @@ const markAllRead=async(req,res,next)=>{
         next(error)
     }
 }
-
-
-
 
 module.exports={
     getNotifications,

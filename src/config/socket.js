@@ -14,20 +14,19 @@ const initSocket = (server) => {
   io.use((socket, next) => {
     try {
       const token = socket.handshake.auth.token || socket.handshake.query.token;
-      
+
       if (!token) {
         return next(new Error("Authentication error: No token provided"));
       }
 
       const decoded = jwt.verify(token.replace(/^Bearer\s+/, ''), process.env.ACCESS_SECRET);
-      
-      // Fortified Payload Mapping: Support all variations of JWT generation across the app
-      socket.userId = decoded.user_id || decoded.id || decoded.userId; 
-      
+
+      socket.userId = decoded.user_id || decoded.id || decoded.userId;
+
       if (!socket.userId) {
           console.warn("Socket connected but no recognizable user id found in token:", decoded);
       }
-      
+
       next();
     } catch (err) {
       console.error("Socket authentication rejected:", err.message);

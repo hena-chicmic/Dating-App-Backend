@@ -8,7 +8,7 @@ const emailWorker = new Worker('email-queue', async (job) => {
     if (job.name === 'verification-email') {
         const { email, otp } = job.data;
         await emailService.sendVerificationEmail(email, otp);
-    } 
+    }
     else if (job.name === 'password-reset-email') {
         const { email, otp } = job.data;
         await emailService.sendPasswordResetEmail(email, otp);
@@ -28,4 +28,4 @@ emailWorker.on('completed', job => {
 
 emailWorker.on('failed', (job, err) => {
     console.error(`[Queue] Email job ${job.id} failed:`, err.message);
-}); 
+});

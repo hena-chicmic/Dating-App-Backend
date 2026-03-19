@@ -1,14 +1,12 @@
 const db = require('../config/db');
 
 class InteractionRepository {
-    /**
-     * Records a swipe (like or dislike).
-     */
+
     async saveInteraction(userId, targetUserId, action) {
         const query = `
             INSERT INTO interactions (user_id, target_user_id, action)
             VALUES ($1, $2, $3)
-            ON CONFLICT (user_id, target_user_id) 
+            ON CONFLICT (user_id, target_user_id)
             DO UPDATE SET action = EXCLUDED.action, created_at = CURRENT_TIMESTAMP
             RETURNING *;
         `;
@@ -16,14 +14,11 @@ class InteractionRepository {
         return result.rows[0];
     }
 
-    /**
-     * Get profiles that the user has liked
-     */
     async getSentLikes(userId) {
         const query = `
-            SELECT 
-                u.id, 
-                u.username, 
+            SELECT
+                u.id,
+                u.username,
                 EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) as age,
                 p.profile_photo_url,
                 p.location_city,
@@ -38,14 +33,11 @@ class InteractionRepository {
         return result.rows;
     }
 
-    /**
-     * Get profiles that have liked the user
-     */
     async getReceivedLikes(userId) {
         const query = `
-            SELECT 
-                u.id, 
-                u.username, 
+            SELECT
+                u.id,
+                u.username,
                 EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) as age,
                 p.profile_photo_url,
                 p.location_city,
@@ -60,9 +52,6 @@ class InteractionRepository {
         return result.rows;
     }
 
-    /**
-     * Blocks a user and breaks any existing match
-     */
     async blockUser(blockerId, blockedId) {
         const client = await db.connect();
         try {
@@ -76,8 +65,8 @@ class InteractionRepository {
             await client.query(blockQuery, [blockerId, blockedId]);
 
             const matchQuery = `
-                UPDATE matches 
-                SET is_active = FALSE 
+                UPDATE matches
+                SET is_active = FALSE
                 WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1);
             `;
             await client.query(matchQuery, [blockerId, blockedId]);
@@ -92,13 +81,10 @@ class InteractionRepository {
         }
     }
 
-    /**
-     * Unblocks a previously blocked user
-     */
     async unblockUser(blockerId, blockedId) {
         const query = `
-            DELETE FROM blocks 
-            WHERE blocker_id = $1 AND blocked_id = $2 
+            DELETE FROM blocks
+            WHERE blocker_id = $1 AND blocked_id = $2
             RETURNING id;
         `;
         const result = await db.query(query, [blockerId, blockedId]);

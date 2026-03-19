@@ -7,13 +7,11 @@ const discoveryWorker = new Worker('discovery-queue', async (job) => {
 
     if (job.name === 'recalculate-profile') {
         const { userId } = job.data;
-        
+
         console.log(`[Worker] Started heavy profile recalculation algorithm for User ${userId}...`);
-        
-        // 1. Instantly invalidate existing cached recommendations since profile changed
+
         await discoveryService.invalidateFeed(userId);
 
-        // 2. Proactively run the heavy database query and cache the first page of matches in the background
         await discoveryService.getFeed(userId, 1);
 
         console.log(`[Worker] Successfully recalcuated and cached page 1 for User ${userId}`);

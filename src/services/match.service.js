@@ -4,10 +4,10 @@ const onlineUsers = require('../socket/online-users');
 const notificationService = require('./notification.service');
 const cache = require('../utils/cache');
 
-const TTL_MATCHES = 2 * 60; // 2 minutes
+const TTL_MATCHES = 2 * 60;
 
 const checkAndCreateMatch = async (userId, targetUserId) => {
-   
+
     const isMutual = await matchRepository.checkMutualLike(userId, targetUserId);
 
     if (isMutual) {
@@ -24,11 +24,10 @@ const checkAndCreateMatch = async (userId, targetUserId) => {
                 const socketB = await onlineUsers.get(parseInt(targetUserId));
                 if (socketB) io.to(socketB).emit('new_match', { ...payload, matchedWith: userId });
             } catch (err) {
-                
+
                 console.error('Socket emit error on new match:', err.message);
             }
 
-            // Also create DB notifications for both users
             try {
                 await notificationService.createNotifications(userId, 'new_match', newMatch.id, "You have a new match!");
                 await notificationService.createNotifications(targetUserId, 'new_match', newMatch.id, "You have a new match!");
@@ -36,7 +35,6 @@ const checkAndCreateMatch = async (userId, targetUserId) => {
                 console.error('Notification creation error on new match:', err.message);
             }
 
-            // Invalidate match cache for both users
             await cache.del(`user:${userId}:matches`);
             await cache.del(`user:${targetUserId}:matches`);
         }

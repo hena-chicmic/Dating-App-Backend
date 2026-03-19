@@ -1,10 +1,9 @@
-// src/controllers/user.controller.js
 const userServices = require('../services/user.service');
 const { queueProfileRecalculation } = require('../queues/discovery.queue');
 
 const getMyProfile = async (req, res, next) => {
   try {
-    const userId = req.user.user_id; // Assuming authMiddleware attaches user to req
+    const userId = req.user.user_id;
     const profile = await userServices.getMyProfile(userId);
 
     res.status(200).json({
@@ -28,7 +27,6 @@ const updateMyProfile = async (req, res, next) => {
 
     const updatedProfile = await userServices.updateMyProfile(userId, profileData);
 
-    // Immediately return response, perform heavy match recalculations in background queue
     await queueProfileRecalculation(userId);
 
     res.status(200).json({
@@ -40,7 +38,6 @@ const updateMyProfile = async (req, res, next) => {
     next(error);
   }
 };
-
 
 const getMyMedia = async (req, res, next) => {
   try {
@@ -147,11 +144,10 @@ const getMyInterests = async (req, res, next) => {
 const updateMyInterests = async (req, res, next) => {
   try {
     const userId = req.user.user_id;
-    const { interestIds } = req.body; // Expecting an array of interest IDs
+    const { interestIds } = req.body;
 
     const updatedInterests = await userServices.updateMyInterests(userId, interestIds);
 
-    // Offload heavy potential match recalculations to background process
     await queueProfileRecalculation(userId);
 
     res.status(200).json({
@@ -166,7 +162,7 @@ const updateMyInterests = async (req, res, next) => {
 
 const getUserProfile = async (req, res, next) => {
   try {
-    const requestingUserId = req.user.user_id; // To check if blocked/matched, etc.
+    const requestingUserId = req.user.user_id;
     const { targetUserId } = req.params;
 
     const profile = await userServices.getUserProfile(requestingUserId, targetUserId);

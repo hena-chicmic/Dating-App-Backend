@@ -3,10 +3,6 @@ const matchRepository = require('../repositories/match.repository');
 
 module.exports = (socket, io) => {
 
-    /**
-     * Set user online status
-     * Security: Trusts socket.userId from authenticated token
-     */
     socket.on('user_online', async () => {
         const userId = socket.userId;
         if (!userId) {
@@ -19,7 +15,6 @@ module.exports = (socket, io) => {
         try {
             const matches = await matchRepository.fetchUserMatches(userId);
 
-            // Collect IDs of matches who are currently online
             const onlineMatchIds = [];
             for (const m of matches) {
                 if (await onlineUsers.has(m.user_id)) {
@@ -27,10 +22,8 @@ module.exports = (socket, io) => {
                 }
             }
 
-            // Tell the user which of their matches are online
             socket.emit('online_status', { onlineUsers: onlineMatchIds });
 
-            // Notify matched users that this user is now online
             for (const match of matches) {
                 const matchSocketId = await onlineUsers.get(match.user_id);
                 if (matchSocketId) {
@@ -42,14 +35,10 @@ module.exports = (socket, io) => {
         }
     });
 
-    /**
-     * Handle disconnection
-     */
     socket.on('disconnect', async () => {
         const userId = socket.userId;
         if (!userId) return;
 
-        // Verify it was our connection that's ending
         const currentSocketId = await onlineUsers.get(userId);
         if (currentSocketId === socket.id) {
             await onlineUsers.delete(userId);

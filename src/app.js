@@ -17,27 +17,19 @@ const reportRoutes = require('./routes/report.routes');
 
 const userRoutes = require('./routes/user.routes');
 
-
 const app = express();
 
 app.use(cors({
-    origin: '*', // Allows test.html (file://) to make requests effortlessly
+    origin: '*',
     credentials: true,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Apply global rate limiter to all API routes
 app.use('/api/v1', globalLimiter);
 
-
-
-
-// Swagger Documentation Page
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-// Mount Routes
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/discovery', discoveryRoutes);
@@ -49,9 +41,7 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/reports', reportRoutes);
 
 app.use('/api/v1/users', userRoutes);
-//app.use('/api/v1/notifications', notificationRoutes);
-// centralized error handler
-app.use(errorHandler);
 
+app.use(errorHandler);
 
 module.exports = app;

@@ -1,6 +1,5 @@
 const reportService = require('../services/report.service');
 
-
 const reportUser = async (req, res, next) => {
     try {
         const reporterId = req.user.user_id;
@@ -31,7 +30,6 @@ const getReport = async (req, res, next) => {
         next(error);
     }
 };
-
 
 const getMyReports = async (req, res, next) => {
     try {

@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 
 const isAuthenticated = (req, res, next) => {
   try {
-    
+
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
@@ -12,7 +12,6 @@ const isAuthenticated = (req, res, next) => {
       });
     }
 
-    
     const token = authHeader.split(" ")[1];
 
     if (!token) {
@@ -22,10 +21,8 @@ const isAuthenticated = (req, res, next) => {
       });
     }
 
-    
     const decoded = jwt.verify(token, process.env.ACCESS_SECRET);
 
-    
     req.user = decoded;
 
     next();

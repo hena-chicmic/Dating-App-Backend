@@ -1,6 +1,3 @@
--- Migration: 002_create_user_profiles_table
--- Description: create user_profiles table
-
 CREATE TABLE IF NOT EXISTS user_profiles (
 
     id SERIAL PRIMARY KEY,

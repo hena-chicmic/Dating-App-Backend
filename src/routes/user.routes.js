@@ -264,5 +264,4 @@ router.post("/deactivate", userController.deactivateAccount);
  */
 router.delete("/account", userController.deleteAccount);
 
-
 module.exports = router;

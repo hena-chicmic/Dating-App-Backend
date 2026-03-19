@@ -9,7 +9,6 @@ const { queueVerificationEmail, queuePasswordResetEmail } = require('../queues')
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
-
 const register = async (data) => {
     const { username, email, password, date_of_birth } = data
 
@@ -47,14 +46,11 @@ const verifyEmail = async (email, otp) => {
     return await authRepository.verifyEmail(email, otp);
 }
 
-
-
 const resendVerification = async (email) => {
     const otp = Math.floor(100000 + Math.random() * 900000)
 
     const user = await authRepository.resendVerification(email, otp)
 
-    // Send the verification email using the background worker queue
     await queueVerificationEmail(user.email, otp);
 
     return true
@@ -64,9 +60,7 @@ const login = async (data) => {
 
     const { email, password } = data
 
-    // Note: login inside repository returns { user } or { user: null } 
-    // and doesn't explicitly throw errors to match how we handle it in service
-    const loginResult = await authRepository.login(email, null) // the token will be saved later
+    const loginResult = await authRepository.login(email, null)
 
     if (!loginResult.user) {
         throw new Error("Invalid email or password")
@@ -84,7 +78,6 @@ const login = async (data) => {
         throw new Error("Invalid email or password")
     }
 
-    // Auto-Reactivate account in case it was previously deactivated
     await authRepository.reactivateUser(user.id)
 
     const accessToken = generateAccessToken({
@@ -109,18 +102,15 @@ const forgotPassword = async (email) => {
     const otp = Math.floor(100000 + Math.random() * 900000)
 
     const userOrError = await authRepository.forgotPassword(email, otp)
-    
+
     if (userOrError instanceof Error) {
         return userOrError
     }
 
-    // Dispatch the password reset email to the background queue worker
     await queuePasswordResetEmail(email, otp);
-    
+
     return true;
 }
-
-
 
 const refresh = async (token) => {
     try {
@@ -187,7 +177,6 @@ const googleLogin = async (idToken) => {
         throw new Error("Your account has been banned due to multiple violations.")
     }
 
-    // Auto-Reactivate account in case it was previously deactivated
     await authRepository.reactivateUser(user.id)
 
     const accessToken = generateAccessToken({ user_id: user.id })

@@ -2,10 +2,10 @@ const userRepository = require('../repositories/user.repository');
 const cache = require('../utils/cache');
 
 const TTL = {
-    PROFILE: 5 * 60,       // 5 minutes
-    PUBLIC_PROFILE: 10 * 60, // 10 minutes
-    INTERESTS_ALL: 60 * 60, // 1 hour
-    MY_INTERESTS: 5 * 60    // 5 minutes
+    PROFILE: 5 * 60,
+    PUBLIC_PROFILE: 10 * 60,
+    INTERESTS_ALL: 60 * 60,
+    MY_INTERESTS: 5 * 60
 };
 
 const getMyProfile = async (userId) => {

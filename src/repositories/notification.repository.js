@@ -1,6 +1,5 @@
 const db = require('../config/db')
 
-
 const getNotifications = async (userId) => {
     const query = `
         SELECT id, type, reference_id, message, is_read

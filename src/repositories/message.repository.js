@@ -1,6 +1,5 @@
 const db = require('../config/db');
 
-
 const saveMessage =async(matchId, senderId, messageText, mediaUrl = null, mediaType = null) => {
     const query = `
         INSERT INTO messages (match_id, sender_id, message_text, media_url, media_type)
@@ -11,10 +10,9 @@ const saveMessage =async(matchId, senderId, messageText, mediaUrl = null, mediaT
     return result.rows[0];
 };
 
-
 const getMessagesByMatch = async (matchId, limit = 50, offset = 0) => {
     const query = `
-        SELECT 
+        SELECT
             m.id,
             m.match_id,
             m.sender_id,
@@ -45,9 +43,8 @@ const markMessagesAsRead = async (matchId, receiverId) => {
         RETURNING id;
     `;
     const result = await db.query(query, [matchId, receiverId]);
-    return result.rows; 
+    return result.rows;
 };
-
 
 const softDeleteMessage = async (messageId, senderId) => {
     const query = `

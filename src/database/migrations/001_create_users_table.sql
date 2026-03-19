@@ -1,6 +1,3 @@
--- Migration: 001_create_users_table
--- Description: create users table
-
 CREATE TABLE IF NOT EXISTS users (
 
     id SERIAL PRIMARY KEY,

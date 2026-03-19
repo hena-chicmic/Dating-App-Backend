@@ -1,22 +1,16 @@
 const nodemailer = require('nodemailer');
 const { getVerificationEmailTemplate, getPasswordResetEmailTemplate } = require('../utils/emailTemplate');
 
-// Create the transporter using SMTP variables from .env
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.ethereal.email',
     port: process.env.SMTP_PORT || 587,
-    secure: process.env.SMTP_PORT == 465, // true for 465, false for other ports
+    secure: process.env.SMTP_PORT == 465,
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
     }
 });
 
-/**
- * Sends an account verification email containing an OTP.
- * @param {string} toEmail - The recipient's email address
- * @param {string} otp - The one-time password
- */
 const sendVerificationEmail = async (toEmail, otp) => {
     try {
         const mailOptions = {
@@ -35,11 +29,6 @@ const sendVerificationEmail = async (toEmail, otp) => {
     }
 };
 
-/**
- * Sends a password reset email containing an OTP.
- * @param {string} toEmail - The recipient's email address
- * @param {string} otp - The one-time password
- */
 const sendPasswordResetEmail = async (toEmail, otp) => {
     try {
         const mailOptions = {
