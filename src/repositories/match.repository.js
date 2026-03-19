@@ -40,6 +40,7 @@ class MatchRepository {
             LEFT JOIN user_profiles p ON u.id = p.user_id
             WHERE (m.user1_id = $1 OR m.user2_id = $1)
             AND m.is_active = TRUE
+            AND u.is_banned = FALSE
             ORDER BY m.created_at DESC;
         `;
         const result = await db.query(query, [userId]);
