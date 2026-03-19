@@ -26,6 +26,7 @@ const getMessagesByMatch = async (matchId, limit = 50, offset = 0) => {
         JOIN users u ON u.id = m.sender_id
         WHERE m.match_id = $1
           AND m.is_deleted = FALSE
+          AND u.is_banned = FALSE
         ORDER BY m.created_at DESC
         LIMIT $2 OFFSET $3;
     `;

@@ -15,36 +15,36 @@ const matchWorker = new Worker('match-queue', async (job) => {
         try {
             const isMutual = await matchRepository.checkMutualLike(userId, targetUserId);
 
-        if (isMutual) {
-            const newMatch = await matchRepository.createMatch(userId, targetUserId);
+            if (isMutual) {
+                const newMatch = await matchRepository.createMatch(userId, targetUserId);
 
-            if (newMatch) {
-                console.log(`[Worker] Matching Logic: SUCCESS. Match ID: ${newMatch.id}`);
+                if (newMatch) {
+                    console.log(`[Worker] Matching Logic: SUCCESS. Match ID: ${newMatch.id}`);
 
-                try {
-                    const io = getIO();
-                    const payload = { matchId: newMatch.id, matchedWith: null };
+                    try {
+                        const io = getIO();
+                        const payload = { matchId: newMatch.id, matchedWith: null };
 
-                    const socketA = await onlineUsers.get(parseInt(userId));
-                    if (socketA) io.to(socketA).emit('new_match', { ...payload, matchedWith: targetUserId });
+                        const socketA = await onlineUsers.get(parseInt(userId));
+                        if (socketA) io.to(socketA).emit('new_match', { ...payload, matchedWith: targetUserId });
 
-                    const socketB = await onlineUsers.get(parseInt(targetUserId));
-                    if (socketB) io.to(socketB).emit('new_match', { ...payload, matchedWith: userId });
-                } catch (socketErr) {
-                    console.error('[Worker] Socket alert failed (Redis Adapter recommended):', socketErr.message);
+                        const socketB = await onlineUsers.get(parseInt(targetUserId));
+                        if (socketB) io.to(socketB).emit('new_match', { ...payload, matchedWith: userId });
+                    } catch (socketErr) {
+                        console.error('[Worker] Socket alert failed (Redis Adapter recommended):', socketErr.message);
+                    }
+
+                    await addNotificationJob(userId, 'new_match', newMatch.id, "You have a new match!");
+                    await addNotificationJob(targetUserId, 'new_match', newMatch.id, "You have a new match!");
+
+                    await cache.del(`user:${userId}:matches`);
+                    await cache.del(`user:${targetUserId}:matches`);
                 }
-
-                await addNotificationJob(userId, 'new_match', newMatch.id, "You have a new match!");
-                await addNotificationJob(targetUserId, 'new_match', newMatch.id, "You have a new match!");
-
-                await cache.del(`user:${userId}:matches`);
-                await cache.del(`user:${targetUserId}:matches`);
             }
+        } catch (err) {
+            console.error(`[Worker] MatchWorker ERROR [Job ${job.id}]:`, err.message);
+            throw err;
         }
-    } catch (err) {
-        console.error(`[Worker] MatchWorker ERROR [Job ${job.id}]:`, err.message);
-        throw err;
-    }
     }
 }, {
     connection: getRedisClient(),
