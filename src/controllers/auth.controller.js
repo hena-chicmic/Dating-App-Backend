@@ -27,7 +27,6 @@ const register = async (req, res, next) => {
 
 const verifyEmail = async (req, res, next) => {
     try {
-        // Joi schema sends email + otp
         const { email, otp } = req.body
         await authServices.verifyEmail(email, otp)
         res.status(200).json({
@@ -41,7 +40,6 @@ const verifyEmail = async (req, res, next) => {
 
 const resendVerification = async (req, res, next) => {
     try {
-        // Swagger docs say email; service will look up user by email
         const { email } = req.body
         await authServices.resendVerification(email)
         res.status(200).json({
@@ -85,7 +83,6 @@ const forgotPassword = async (req, res, next) => {
 
 const resetPassword = async (req, res, next) => {
     try {
-        // Joi schema sends newPassword + otp
         const { email, newPassword, otp } = req.body;
         await authServices.resetPassword(email, newPassword, otp)
         res.status(200).json({

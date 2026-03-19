@@ -9,7 +9,6 @@ const generateAccessToken=(payload)=>{
 }
 
 const generateRefreshToken=(payload)=>{
-    // Add a unique jti (JWT ID) to ensure uniqueness even if generated in the same second
     const uniquePayload = {
         ...payload,
         jti: require('crypto').randomUUID()

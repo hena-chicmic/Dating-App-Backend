@@ -11,7 +11,6 @@ const initSocket = (server) => {
     }
   });
 
-  // Socket authentication middleware
   io.use((socket, next) => {
     try {
       const token = socket.handshake.auth.token || socket.handshake.query.token;

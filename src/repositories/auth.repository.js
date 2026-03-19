@@ -155,7 +155,7 @@ const login = async (email, refreshToken) => {
 
         // Fetch user
         const result = await client.query(
-            `SELECT id,username,email,password_hash,is_verified
+            `SELECT id,username,email,password_hash,is_verified,is_banned
              FROM users
              WHERE email=$1`,
             [email]
@@ -299,7 +299,7 @@ const googleLogin = async (email, uniqueUsername, hashedPassword, dummyDob, refr
         await client.query('BEGIN');
 
         const existingUser = await client.query(
-            'SELECT id, username, email, is_verified FROM users WHERE email=$1',
+            'SELECT id, username, email, is_verified, is_banned FROM users WHERE email=$1',
             [email]
         );
 
@@ -336,6 +336,10 @@ const googleLogin = async (email, uniqueUsername, hashedPassword, dummyDob, refr
     }
 };
 
+const reactivateUser = async (userId) => {
+    await db.query(`UPDATE users SET is_active = TRUE WHERE id = $1`, [userId]);
+};
+
 module.exports = {
     checkUserExists,
     register,
@@ -347,5 +351,6 @@ module.exports = {
     refresh,
     logout,
     googleLogin,
-    saveRefreshToken
+    saveRefreshToken,
+    reactivateUser
 };

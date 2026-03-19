@@ -28,6 +28,22 @@ const createReportAndBlock = async (reporterId, reportedUserId, reason, descript
         `;
         await client.query(matchQuery, [reporterId, reportedUserId]);
 
+        // Auto-Ban Logic: Check if >= 3 distinct reporters
+        const countQuery = `
+            SELECT COUNT(DISTINCT reporter_id) AS "reporterCount" 
+            FROM reports 
+            WHERE reported_user_id = $1;
+        `;
+        const countResult = await client.query(countQuery, [reportedUserId]);
+        const count = parseInt(countResult.rows[0].reporterCount, 10);
+
+        if (count >= 5) {
+            await client.query(
+                `UPDATE users SET is_banned = TRUE, is_active = FALSE WHERE id = $1`, 
+                [reportedUserId]
+            );
+        }
+
         await client.query('COMMIT');
         return report;
     } catch (error) {
