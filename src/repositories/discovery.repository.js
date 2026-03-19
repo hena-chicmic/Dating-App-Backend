@@ -58,6 +58,11 @@ class DiscoveryRepository {
                 SELECT 1 FROM interactions i
                 WHERE i.user_id = $1 AND i.target_user_id = u.id
             )
+            AND NOT EXISTS (
+                SELECT 1 FROM blocks b
+                WHERE (b.blocker_id = $1 AND b.blocked_id = u.id)
+                   OR (b.blocker_id = u.id AND b.blocked_id = $1)
+            )
             GROUP BY u.id, p.profile_photo_url, p.location_city, p.location_country, p.latitude, p.longitude
             ORDER BY
 
