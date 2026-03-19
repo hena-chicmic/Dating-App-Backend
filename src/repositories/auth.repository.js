@@ -278,7 +278,7 @@ const logout = async (token) => {
     return true;
 };
 
-const googleLogin = async (email, uniqueUsername, hashedPassword, dummyDob, refreshToken) => {
+const googleLogin = async (email, uniqueUsername, hashedPassword, dummyDob, profilePhotoUrl, refreshToken) => {
     const client = await db.connect();
 
     try {
@@ -301,6 +301,24 @@ const googleLogin = async (email, uniqueUsername, hashedPassword, dummyDob, refr
                 [uniqueUsername, email, hashedPassword, dummyDob, true]
             );
             user = result.rows[0];
+        }
+
+        // ALWAYS Ensure user_profile exists for Google users
+        await client.query(
+            `INSERT INTO user_profiles (user_id, profile_photo_url) 
+                VALUES ($1, $2) 
+                ON CONFLICT (user_id) DO UPDATE SET profile_photo_url = COALESCE(user_profiles.profile_photo_url, EXCLUDED.profile_photo_url)`,
+            [user.id, profilePhotoUrl]
+        );
+
+        // ALWAYS Ensure a primary photo exists if provided by Google
+        if (profilePhotoUrl) {
+            await client.query(
+                `INSERT INTO user_media (user_id, media_url, media_type, is_primary)
+                    VALUES ($1, $2, 'image', true)
+                    ON CONFLICT (user_id, media_url) DO NOTHING`,
+                [user.id, profilePhotoUrl]
+            );
         }
 
         if (refreshToken) {
