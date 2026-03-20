@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS user_media (
     media_url TEXT NOT NULL,
 
     media_type TEXT CHECK (
-        media_type IN ('image','video')
+        media_type IN ('image','video', 'audio')
     ),
 
     is_primary BOOLEAN DEFAULT FALSE,
