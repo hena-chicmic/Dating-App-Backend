@@ -29,11 +29,7 @@ class DiscoveryRepository {
                 p.location_country,
                 COUNT(ui2.interest_id) AS common_interests,
 
-                (6371 * acos(
-                    cos(radians($7)) * cos(radians(p.latitude)) *
-                    cos(radians(p.longitude) - radians($8)) +
-                    sin(radians($7)) * sin(radians(p.latitude))
-                )) AS distance_km
+                (ST_Distance(p.location_geog, ST_SetSRID(ST_MakePoint($8, $7), 4326)::geography) / 1000.0) AS distance_km
             FROM users u
             LEFT JOIN user_profiles p ON u.id = p.user_id
 
@@ -46,14 +42,9 @@ class DiscoveryRepository {
             AND u.gender = $2
 
             AND EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN ($3 - 5) AND ($4 + 5)
-            AND p.latitude IS NOT NULL
-            AND p.longitude IS NOT NULL
+            AND p.location_geog IS NOT NULL
 
-            AND (6371 * acos(
-                    cos(radians($7)) * cos(radians(p.latitude)) *
-                    cos(radians(p.longitude) - radians($8)) +
-                    sin(radians($7)) * sin(radians(p.latitude))
-                )) <= 100
+            AND ST_DWithin(p.location_geog, ST_SetSRID(ST_MakePoint($8, $7), 4326)::geography, 2000 * 1000)
             AND NOT EXISTS (
                 SELECT 1 FROM interactions i
                 WHERE i.user_id = $1 AND i.target_user_id = u.id
@@ -63,14 +54,10 @@ class DiscoveryRepository {
                 WHERE (b.blocker_id = $1 AND b.blocked_id = u.id)
                    OR (b.blocker_id = u.id AND b.blocked_id = $1)
             )
-            GROUP BY u.id, p.profile_photo_url, p.location_city, p.location_country, p.latitude, p.longitude
+            GROUP BY u.id, p.profile_photo_url, p.location_city, p.location_country, p.location_geog
             ORDER BY
 
-                CASE WHEN (6371 * acos(
-                    cos(radians($7)) * cos(radians(p.latitude)) *
-                    cos(radians(p.longitude) - radians($8)) +
-                    sin(radians($7)) * sin(radians(p.latitude))
-                )) <= $9 THEN 0 ELSE 1 END ASC,
+                CASE WHEN (ST_Distance(p.location_geog, ST_SetSRID(ST_MakePoint($8, $7), 4326)::geography) / 1000.0) <= $9 THEN 0 ELSE 1 END ASC,
 
                 CASE WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN $3 AND $4 THEN 0 ELSE 1 END ASC,
 

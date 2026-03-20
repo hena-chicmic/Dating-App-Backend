@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS email_verifications (
     OTPtoken INTEGER NOT NULL,
 
     expires_at TIMESTAMP DEFAULT (NOW() + INTERVAL '15 minutes'),
-
+    attempts INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_email_verification_user
