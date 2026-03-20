@@ -11,16 +11,25 @@ class CallRepository {
         return result.rows[0].id;
     }
 
-    async updateCallStatus(callId, { status, duration = 0, endedAt = null }) {
+    async updateCallStatus(callId, status) {
+        let setClause = 'status = $1';
+        
+        if (status === 'ongoing') {
+            setClause += ', started_at = CURRENT_TIMESTAMP';
+        } else if (status === 'completed' || status === 'missed' || status === 'rejected') {
+            setClause += ', ended_at = CURRENT_TIMESTAMP';
+            if (status === 'completed') {
+                setClause += ', duration = CAST(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - started_at)) AS INTEGER)';
+            }
+        }
+
         const query = `
             UPDATE call_logs
-            SET status = $1, 
-                duration = $2, 
-                ended_at = $3
-            WHERE id = $4
+            SET ${setClause}
+            WHERE id = $2
             RETURNING *;
         `;
-        const result = await db.query(query, [status, duration, endedAt, callId]);
+        const result = await db.query(query, [status, callId]);
         return result.rows[0];
     }
 
