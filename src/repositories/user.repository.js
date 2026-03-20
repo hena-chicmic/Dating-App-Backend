@@ -86,6 +86,11 @@ const updateMyProfile = async (userId, profileData) => {
                 location_country=COALESCE($3, location_country),
                 latitude=COALESCE($4, latitude),
                 longitude=COALESCE($5, longitude),
+                location_geog = CASE 
+                    WHEN COALESCE($5, longitude) IS NOT NULL AND COALESCE($4, latitude) IS NOT NULL 
+                    THEN ST_SetSRID(ST_MakePoint(COALESCE($5, longitude), COALESCE($4, latitude)), 4326)::geography 
+                    ELSE location_geog 
+                END,
                 profile_photo_url=COALESCE($6, profile_photo_url),
                 updated_at=NOW()
             WHERE user_id=$7`,
