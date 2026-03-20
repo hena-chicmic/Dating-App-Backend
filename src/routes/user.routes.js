@@ -216,25 +216,6 @@ router.get("/my-interests", userController.getMyInterests);
  */
 router.put("/my-interests", validate(updateInterestsSchema), userController.updateMyInterests);
 
-/**
- * @swagger
- * /users/{targetUserId}:
- *   get:
- *     summary: Get another user's public profile
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: targetUserId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Profile retrieved
- */
-router.get("/:targetUserId", validate(targetUserIdParamSchema, 'params'), userController.getUserProfile);
 
 /**
  * @swagger
@@ -263,5 +244,25 @@ router.post("/deactivate", userController.deactivateAccount);
  *         description: Account deleted
  */
 router.delete("/account", userController.deleteAccount);
+
+/**
+ * @swagger
+ * /users/{targetUserId}:
+ *   get:
+ *     summary: Get another user's public profile
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: targetUserId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Profile retrieved
+ */
+router.get("/:targetUserId", validate(targetUserIdParamSchema, 'params'), userController.getUserProfile);
 
 module.exports = router;

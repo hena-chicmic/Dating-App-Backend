@@ -149,7 +149,7 @@ const deleteMedia = async (userId, mediaId) => {
     const query = `
         DELETE FROM user_media
         WHERE id = $1 AND user_id = $2
-        RETURNING id
+        RETURNING id, media_url
     `;
 
     const checkResult = await db.query(
