@@ -6,18 +6,8 @@ class CallService {
         return await callRepository.createCallLog({ matchId, callerId, receiverId });
     }
 
-    async updateStatus(callId, status, startedAt = null) {
-        let duration = 0;
-        let endedAt = null;
-
-        if (status === 'completed' && startedAt) {
-            endedAt = new Date();
-            duration = Math.floor((endedAt - new Date(startedAt)) / 1000);
-        } else if (status === 'missed' || status === 'rejected') {
-            endedAt = new Date();
-        }
-
-        const log = await callRepository.updateCallStatus(callId, { status, duration, endedAt });
+    async updateStatus(callId, status) {
+        const log = await callRepository.updateCallStatus(callId, status);
 
         // Trigger notification for missed calls
         if (status === 'missed') {

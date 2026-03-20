@@ -2,8 +2,6 @@ const onlineUsers = require('./online-users');
 const matchRepository = require('../repositories/match.repository');
 const callService = require('../services/call.service');
 
-const activeCalls = new Map(); // callId -> { timeout, answered, startedAt }
-
 module.exports = (socket, io) => {
 
     socket.on('call_user', async ({ targetUserId, matchId, offer }) => {
@@ -17,21 +15,8 @@ module.exports = (socket, io) => {
                 return socket.emit('call_failed', { message: 'User is not online.' });
             }
 
-            // Create initial log
+            // Create initial stateless log
             const callId = await callService.startCall(matchId, callerId, targetUserId);
-
-            // 45s Timeout for "Missed" logic
-            const timeout = setTimeout(async () => {
-                const call = activeCalls.get(callId);
-                if (call && !call.answered) {
-                    await callService.updateStatus(callId, 'missed');
-                    activeCalls.delete(callId);
-                    io.to(targetSocketId).emit('call_ended', { matchId, reason: 'timeout' });
-                    socket.emit('call_failed', { message: 'User did not answer.' });
-                }
-            }, 45000);
-
-            activeCalls.set(callId, { timeout, answered: false });
 
             io.to(targetSocketId).emit('incoming_call', {
                 callId,
@@ -50,15 +35,8 @@ module.exports = (socket, io) => {
             const authorized = await matchRepository.isUserInMatch(socket.userId, matchId);
             if (!authorized) return;
 
-            const call = activeCalls.get(callId);
-            if (call) {
-                clearTimeout(call.timeout);
-                call.answered = true;
-                call.startedAt = new Date();
-                activeCalls.set(callId, call);
-                
-                await callService.updateStatus(callId, 'ongoing');
-            }
+            // Stateless update
+            await callService.updateStatus(callId, 'ongoing');
 
             const callerSocketId = await onlineUsers.get(parseInt(callerId));
             if (callerSocketId) {
@@ -92,11 +70,7 @@ module.exports = (socket, io) => {
             const authorized = await matchRepository.isUserInMatch(socket.userId, matchId);
             if (!authorized) return;
 
-            const call = activeCalls.get(callId);
-            if (call) {
-                await callService.updateStatus(callId, 'completed', call.startedAt);
-                activeCalls.delete(callId);
-            }
+            await callService.updateStatus(callId, 'completed');
 
             const targetSocketId = await onlineUsers.get(parseInt(targetUserId));
             if (targetSocketId) {
@@ -112,12 +86,6 @@ module.exports = (socket, io) => {
 
     socket.on('call_reject', async ({ callId, callerId, matchId }) => {
         try {
-            const call = activeCalls.get(callId);
-            if (call) {
-                clearTimeout(call.timeout);
-                activeCalls.delete(callId);
-            }
-
             await callService.updateStatus(callId, 'rejected');
 
             const callerSocketId = await onlineUsers.get(parseInt(callerId));
@@ -129,6 +97,27 @@ module.exports = (socket, io) => {
             }
         } catch (err) {
             console.error('call_reject error:', err.message);
+        }
+    });
+
+    socket.on('call_cancel', async ({ callId, targetUserId, matchId }) => {
+        // Triggered by frontend timeout logic (e.g. 45s passed) or caller hanging up early
+        try {
+            const authorized = await matchRepository.isUserInMatch(socket.userId, matchId);
+            if (!authorized) return;
+
+            await callService.updateStatus(callId, 'missed');
+
+            const targetSocketId = await onlineUsers.get(parseInt(targetUserId));
+            if (targetSocketId) {
+                io.to(targetSocketId).emit('call_ended', {
+                    by: socket.userId,
+                    matchId,
+                    reason: 'timeout_or_cancelled'
+                });
+            }
+        } catch (err) {
+            console.error('call_cancel error:', err.message);
         }
     });
 };
