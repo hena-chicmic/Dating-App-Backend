@@ -152,10 +152,47 @@ const deleteMedia = async (userId, mediaId) => {
         RETURNING id
     `;
 
+    const checkResult = await db.query(
+        `SELECT media_url FROM user_media WHERE id = $1 AND user_id = $2`,
+        [mediaId, userId]
+    );
+
+    if (checkResult.rowCount === 0) {
+        throw new Error("Media not found or does not belong to user");
+    }
+
+    const mediaUrl = checkResult.rows[0].media_url;
+    const wasPrimary = checkResult.rows[0].is_primary;
+
+    // Extract public_id from Cloudinary URL
+    const parts = mediaUrl.split('/');
+    const lastPart = parts[parts.length - 1]; // public_id.jpg
+    const publicIdWithFolder = `dating-app/users/${lastPart.split('.')[0]}`; 
+
     const result = await db.query(query, [mediaId, userId]);
 
-    if (result.rowCount === 0) {
-        throw new Error("Media not found or does not belong to user");
+    // Cleanup Cloudinary
+    try {
+        const cloudinary = require('../config/cloudinary');
+        await cloudinary.uploader.destroy(publicIdWithFolder);
+    } catch (err) {
+        console.error("Failed to delete asset from Cloudinary:", err.message);
+    }
+
+    // Handle Headless Profile: If we deleted the primary, promote another or clear profile_photo_url
+    if (wasPrimary) {
+        const nextMedia = await db.query(
+            `SELECT id, media_url FROM user_media WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+            [userId]
+        );
+
+        if (nextMedia.rowCount > 0) {
+            const newPrimary = nextMedia.rows[0];
+            await db.query(`UPDATE user_media SET is_primary = TRUE WHERE id = $1`, [newPrimary.id]);
+            await db.query(`UPDATE user_profiles SET profile_photo_url = $1 WHERE user_id = $2`, [newPrimary.media_url, userId]);
+        } else {
+            await db.query(`UPDATE user_profiles SET profile_photo_url = NULL WHERE user_id = $1`, [userId]);
+        }
     }
 
     return { success: true };
