@@ -5,10 +5,21 @@ const matchRepository = require('../repositories/match.repository');
 
 module.exports = (socket, io) => {
 
-    socket.on('join_match_room', ({ matchId }) => {
-        const room = `match_${matchId}`;
-        socket.join(room);
-        console.log(`Socket ${socket.id} joined room: ${room}`);
+    socket.on('join_match_room', async ({ matchId }) => {
+        try {
+            const userId = socket.userId;
+            const authorized = await matchRepository.isUserInMatch(userId, matchId);
+            
+            if (!authorized) {
+                return socket.emit('error', { message: 'Unauthorized access to this chat.' });
+            }
+
+            const room = `match_${matchId}`;
+            socket.join(room);
+            console.log(`Socket ${socket.id} (User ${userId}) joined room: ${room}`);
+        } catch (err) {
+            socket.emit('error', { message: 'Failed to join chat room.' });
+        }
     });
 
     socket.on('send_message', async ({ matchId, text, mediaUrl = null, mediaType = null }) => {
@@ -16,15 +27,19 @@ module.exports = (socket, io) => {
             const senderId = socket.userId;
             if (!senderId) return socket.emit('error', { message: 'Not authenticated.' });
 
+            const authorized = await matchRepository.isUserInMatch(senderId, matchId);
+            if (!authorized) {
+                return socket.emit('error', { message: 'You are not a participant in this match.' });
+            }
+
             const savedMessage = await messageService.sendMessage(matchId, senderId, text, mediaUrl, mediaType);
 
             io.to(`match_${matchId}`).emit('receive_message', savedMessage);
 
             try {
-
-                const match = (await matchRepository.fetchUserMatches(senderId)).find(m => m.match_id === parseInt(matchId));
-                if (match) {
-                    await addNotificationJob(match.user_id, 'new_message', matchId, `New message from ${match.username}`);
+                const partner = await matchRepository.getPartner(matchId, senderId);
+                if (partner) {
+                    await addNotificationJob(partner.id, 'new_message', matchId, `New message from ${partner.username}`);
                 }
             } catch (err) {
                 console.error('Notification error on send_message:', err.message);

@@ -6,7 +6,8 @@ const getChatHistory = async (req, res, next) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 50;
 
-        const messages = await messageService.getChatHistory(matchId, page, limit);
+        const userId = req.user.user_id;
+        const messages = await messageService.getChatHistory(matchId, userId, page, limit);
         res.status(200).json({ success: true, data: messages });
     } catch (error) {
         next(error);
