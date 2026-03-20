@@ -64,9 +64,13 @@ const uploadMedia = async (req, res, next) => {
       });
     }
 
+    let media_type = "image";
+    if (req.file.mimetype.startsWith('video/')) media_type = "video";
+    if (req.file.mimetype.startsWith('audio/')) media_type = "audio";
+
     const mediaData = {
       media_url: req.file.path,
-      media_type: "image"
+      media_type: media_type
     };
 
     const newMedia = await userServices.uploadMedia(userId, mediaData);

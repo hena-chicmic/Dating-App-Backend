@@ -16,6 +16,7 @@ const notificationRoutes = require('./routes/notification.routes');
 const reportRoutes = require('./routes/report.routes');
 
 const userRoutes = require('./routes/user.routes');
+const callRoutes = require('./routes/call.routes');
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/reports', reportRoutes);
 
 app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/calls', callRoutes);
 
 app.use(errorHandler);
 
