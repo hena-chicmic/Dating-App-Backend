@@ -31,14 +31,26 @@ const sendMessage = async (matchId, senderId, text, mediaUrl = null, mediaType =
     return message;
 };
 
-const getChatHistory = async (matchId, page = 1, limit = 50) => {
+const getChatHistory = async (matchId, userId, page = 1, limit = 50) => {
+    // Verify participation
+    const authorized = await matchRepository.isUserInMatch(userId, matchId);
+    if (!authorized) {
+        throw new Error('Unauthorized access to this chat history.');
+    }
+
     const offset = (page - 1) * limit;
     const messages = await messageRepository.getMessagesByMatch(matchId, limit, offset);
     return messages;
 };
 
-const markRead = async (matchId, receiverId) => {
-    const updated = await messageRepository.markMessagesAsRead(matchId, receiverId);
+const markRead = async (matchId, userId) => {
+    // Verify participation
+    const authorized = await matchRepository.isUserInMatch(userId, matchId);
+    if (!authorized) {
+        throw new Error('Unauthorized access to this match.');
+    }
+
+    const updated = await messageRepository.markMessagesAsRead(matchId, userId);
     return updated;
 };
 

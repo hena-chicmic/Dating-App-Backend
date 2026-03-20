@@ -2,8 +2,8 @@ const onlineUsers = require('./online-users');
 
 module.exports = (socket, io) => {
 
-    socket.on('call_user', ({ targetUserId, matchId, offer }) => {
-        const targetSocketId = onlineUsers.get(parseInt(targetUserId));
+    socket.on('call_user', async ({ targetUserId, matchId, offer }) => {
+        const targetSocketId = await onlineUsers.get(parseInt(targetUserId));
         if (!targetSocketId) {
             return socket.emit('call_failed', { message: 'User is not online.' });
         }
@@ -15,8 +15,8 @@ module.exports = (socket, io) => {
         });
     });
 
-    socket.on('call_answer', ({ callerId, matchId, answer }) => {
-        const callerSocketId = onlineUsers.get(parseInt(callerId));
+    socket.on('call_answer', async ({ callerId, matchId, answer }) => {
+        const callerSocketId = await onlineUsers.get(parseInt(callerId));
         if (!callerSocketId) return;
 
         io.to(callerSocketId).emit('call_answered', {
@@ -26,8 +26,8 @@ module.exports = (socket, io) => {
         });
     });
 
-    socket.on('ice_candidate', ({ targetUserId, candidate }) => {
-        const targetSocketId = onlineUsers.get(parseInt(targetUserId));
+    socket.on('ice_candidate', async ({ targetUserId, candidate }) => {
+        const targetSocketId = await onlineUsers.get(parseInt(targetUserId));
         if (!targetSocketId) return;
 
         io.to(targetSocketId).emit('ice_candidate', {
@@ -36,8 +36,8 @@ module.exports = (socket, io) => {
         });
     });
 
-    socket.on('call_end', ({ targetUserId, matchId }) => {
-        const targetSocketId = onlineUsers.get(parseInt(targetUserId));
+    socket.on('call_end', async ({ targetUserId, matchId }) => {
+        const targetSocketId = await onlineUsers.get(parseInt(targetUserId));
         if (!targetSocketId) return;
 
         io.to(targetSocketId).emit('call_ended', {
@@ -46,8 +46,8 @@ module.exports = (socket, io) => {
         });
     });
 
-    socket.on('call_reject', ({ callerId, matchId }) => {
-        const callerSocketId = onlineUsers.get(parseInt(callerId));
+    socket.on('call_reject', async ({ callerId, matchId }) => {
+        const callerSocketId = await onlineUsers.get(parseInt(callerId));
         if (!callerSocketId) return;
 
         io.to(callerSocketId).emit('call_rejected', {
