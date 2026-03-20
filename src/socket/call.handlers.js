@@ -15,7 +15,6 @@ module.exports = (socket, io) => {
                 return socket.emit('call_failed', { message: 'User is not online.' });
             }
 
-            // Create initial stateless log
             const callId = await callService.startCall(matchId, callerId, targetUserId);
 
             io.to(targetSocketId).emit('incoming_call', {
@@ -35,7 +34,6 @@ module.exports = (socket, io) => {
             const authorized = await matchRepository.isUserInMatch(socket.userId, matchId);
             if (!authorized) return;
 
-            // Stateless update
             await callService.updateStatus(callId, 'ongoing');
 
             const callerSocketId = await onlineUsers.get(parseInt(callerId));

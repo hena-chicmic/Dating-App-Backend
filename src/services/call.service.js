@@ -9,7 +9,6 @@ class CallService {
     async updateStatus(callId, status) {
         const log = await callRepository.updateCallStatus(callId, status);
 
-        // Trigger notification for missed calls
         if (status === 'missed') {
             try {
                 await addNotificationJob(

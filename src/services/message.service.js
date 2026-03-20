@@ -32,7 +32,6 @@ const sendMessage = async (matchId, senderId, text, mediaUrl = null, mediaType =
 };
 
 const getChatHistory = async (matchId, userId, page = 1, limit = 50) => {
-    // Verify participation
     const authorized = await matchRepository.isUserInMatch(userId, matchId);
     if (!authorized) {
         throw new Error('Unauthorized access to this chat history.');
@@ -44,7 +43,6 @@ const getChatHistory = async (matchId, userId, page = 1, limit = 50) => {
 };
 
 const markRead = async (matchId, userId) => {
-    // Verify participation
     const authorized = await matchRepository.isUserInMatch(userId, matchId);
     if (!authorized) {
         throw new Error('Unauthorized access to this match.');

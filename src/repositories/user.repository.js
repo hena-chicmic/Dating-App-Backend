@@ -169,14 +169,11 @@ const deleteMedia = async (userId, mediaId) => {
     const mediaUrl = checkResult.rows[0].media_url;
     const wasPrimary = checkResult.rows[0].is_primary;
 
-    // Extract public_id from Cloudinary URL
     const parts = mediaUrl.split('/');
-    const lastPart = parts[parts.length - 1]; // public_id.jpg
+    const lastPart = parts[parts.length - 1]; 
     const publicIdWithFolder = `dating-app/users/${lastPart.split('.')[0]}`; 
 
     const result = await db.query(query, [mediaId, userId]);
-
-    // Cleanup Cloudinary
     try {
         const cloudinary = require('../config/cloudinary');
         await cloudinary.uploader.destroy(publicIdWithFolder);
@@ -184,7 +181,6 @@ const deleteMedia = async (userId, mediaId) => {
         console.error("Failed to delete asset from Cloudinary:", err.message);
     }
 
-    // Handle Headless Profile: If we deleted the primary, promote another or clear profile_photo_url
     if (wasPrimary) {
         const nextMedia = await db.query(
             `SELECT id, media_url FROM user_media WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
