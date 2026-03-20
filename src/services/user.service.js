@@ -1,5 +1,6 @@
 const userRepository = require('../repositories/user.repository');
 const cache = require('../utils/cache');
+const cloudinary = require('../config/cloudinary');
 
 const TTL = {
     PROFILE: 5 * 60,
@@ -21,6 +22,7 @@ const getMyProfile = async (userId) => {
 const updateMyProfile = async (userId, profileData) => {
     const result = await userRepository.updateMyProfile(userId, profileData);
     await cache.del(`user:${userId}:profile`);
+    await cache.del(`user:${userId}:public`);
     return result;
 };
 
@@ -29,15 +31,37 @@ const getMyMedia = async (userId) => {
 };
 
 const uploadMedia = async (userId, mediaData) => {
-    return await userRepository.uploadMedia(userId, mediaData);
+    const result = await userRepository.uploadMedia(userId, mediaData);
+    await cache.del(`user:${userId}:profile`);
+    await cache.del(`user:${userId}:public`);
+    return result;
 };
 
 const deleteMedia = async (userId, mediaId) => {
-    return await userRepository.deleteMedia(userId, mediaId);
+    const media = await userRepository.deleteMedia(userId, mediaId);
+    
+    if (media && media.media_url) {
+        try {
+            const urlParts = media.media_url.split('/');
+            const fileName = urlParts[urlParts.length - 1]; 
+            const publicId = fileName.split('.')[0]; 
+            
+            await cloudinary.uploader.destroy(publicId);
+        } catch (err) {
+            console.error('Failed to delete media from Cloudinary:', err.message);
+        }
+    }
+    
+    await cache.del(`user:${userId}:profile`);
+    await cache.del(`user:${userId}:public`);
+    return { success: true };
 };
 
 const setPrimaryMedia = async (userId, mediaId) => {
-    return await userRepository.setPrimaryMedia(userId, mediaId);
+    const result = await userRepository.setPrimaryMedia(userId, mediaId);
+    await cache.del(`user:${userId}:profile`);
+    await cache.del(`user:${userId}:public`);
+    return result;
 };
 
 const getAllInterests = async () => {

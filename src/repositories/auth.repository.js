@@ -223,20 +223,35 @@ const resetPassword = async (email, newHashedPassword, otp) => {
         const userId = userResult.rows[0].id;
 
         const result = await client.query(
-            `SELECT user_id, expires_at
+            `SELECT user_id, expires_at, otp_token, attempts
              FROM password_resets
-             WHERE user_id=$1 AND otp_token=$2`,
-            [userId, otp]
+             WHERE user_id=$1`,
+            [userId]
         );
 
         if (!result.rows.length) {
-            throw new Error("Invalid or expired OTP");
+            throw new Error("No active password reset request found.");
         }
 
         const record = result.rows[0];
 
+        // CHECK 1: Expiration
         if (new Date() > record.expires_at) {
+            await client.query(`DELETE FROM password_resets WHERE user_id=$1`, [userId]);
             throw new Error("Reset OTP expired");
+        }
+
+        // CHECK 2: Token Matching
+        if (parseInt(otp) !== record.otp_token) {
+            const newAttempts = record.attempts + 1;
+            
+            if (newAttempts >= 5) {
+                await client.query(`DELETE FROM password_resets WHERE user_id=$1`, [userId]);
+                throw new Error("Too many failed attempts. Please request a new OTP.");
+            }
+
+            await client.query(`UPDATE password_resets SET attempts = $1 WHERE user_id = $2`, [newAttempts, userId]);
+            throw new Error(`Invalid OTP. ${5 - newAttempts} attempts remaining.`);
         }
 
         await client.query(
@@ -293,6 +308,9 @@ const googleLogin = async (email, uniqueUsername, hashedPassword, dummyDob, prof
 
         if (existingUser.rows.length > 0) {
             user = existingUser.rows[0];
+            if (user.is_banned) {
+                throw new Error("Your account has been banned due to multiple violations.");
+            }
         } else {
             const result = await client.query(
                 `INSERT INTO users (username, email, password_hash, date_of_birth, is_verified)
