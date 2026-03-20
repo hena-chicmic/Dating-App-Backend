@@ -86,6 +86,11 @@ const updateMyProfile = async (userId, profileData) => {
                 location_country=COALESCE($3, location_country),
                 latitude=COALESCE($4, latitude),
                 longitude=COALESCE($5, longitude),
+                location_geog = CASE 
+                    WHEN COALESCE($5, longitude) IS NOT NULL AND COALESCE($4, latitude) IS NOT NULL 
+                    THEN ST_SetSRID(ST_MakePoint(COALESCE($5, longitude), COALESCE($4, latitude)), 4326)::geography 
+                    ELSE location_geog 
+                END,
                 profile_photo_url=COALESCE($6, profile_photo_url),
                 updated_at=NOW()
             WHERE user_id=$7`,
@@ -149,13 +154,46 @@ const deleteMedia = async (userId, mediaId) => {
     const query = `
         DELETE FROM user_media
         WHERE id = $1 AND user_id = $2
-        RETURNING id
+        RETURNING id, media_url
     `;
 
-    const result = await db.query(query, [mediaId, userId]);
+    const checkResult = await db.query(
+        `SELECT media_url FROM user_media WHERE id = $1 AND user_id = $2`,
+        [mediaId, userId]
+    );
 
-    if (result.rowCount === 0) {
+    if (checkResult.rowCount === 0) {
         throw new Error("Media not found or does not belong to user");
+    }
+
+    const mediaUrl = checkResult.rows[0].media_url;
+    const wasPrimary = checkResult.rows[0].is_primary;
+
+    const parts = mediaUrl.split('/');
+    const lastPart = parts[parts.length - 1]; 
+    const publicIdWithFolder = `dating-app/users/${lastPart.split('.')[0]}`; 
+
+    const result = await db.query(query, [mediaId, userId]);
+    try {
+        const cloudinary = require('../config/cloudinary');
+        await cloudinary.uploader.destroy(publicIdWithFolder);
+    } catch (err) {
+        console.error("Failed to delete asset from Cloudinary:", err.message);
+    }
+
+    if (wasPrimary) {
+        const nextMedia = await db.query(
+            `SELECT id, media_url FROM user_media WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+            [userId]
+        );
+
+        if (nextMedia.rowCount > 0) {
+            const newPrimary = nextMedia.rows[0];
+            await db.query(`UPDATE user_media SET is_primary = TRUE WHERE id = $1`, [newPrimary.id]);
+            await db.query(`UPDATE user_profiles SET profile_photo_url = $1 WHERE user_id = $2`, [newPrimary.media_url, userId]);
+        } else {
+            await db.query(`UPDATE user_profiles SET profile_photo_url = NULL WHERE user_id = $1`, [userId]);
+        }
     }
 
     return { success: true };
