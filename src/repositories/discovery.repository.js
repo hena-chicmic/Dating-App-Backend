@@ -53,6 +53,8 @@ class DiscoveryRepository {
                 ($7::double precision IS NULL OR $8::double precision IS NULL)
                 OR ST_DWithin(p.location_geog, ST_SetSRID(ST_MakePoint($8, $7), 4326)::geography, $9 * 1000)
             )
+            AND p.profile_photo_url IS NOT NULL 
+            AND p.bio IS NOT NULL AND p.bio != ''
 
             AND NOT EXISTS (
                 SELECT 1 FROM interactions i
