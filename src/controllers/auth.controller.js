@@ -1,4 +1,5 @@
 const authServices = require('../services/auth.service')
+const isProduction = process.env.NODE_ENV === 'production';
 
 const register = async (req, res, next) => {
     try {
@@ -12,7 +13,9 @@ const register = async (req, res, next) => {
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: false
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         })
 
         res.status(201).json({
@@ -55,7 +58,9 @@ const login = async (req, res, next) => {
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: false
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         })
 
         res.status(200).json({
@@ -95,7 +100,13 @@ const resetPassword = async (req, res, next) => {
 const refresh = async (req, res, next) => {
     try {
         const token = req.cookies.refreshToken;
-        const accessToken = await authServices.refresh(token)
+        const {accessToken,refreshToken} = await authServices.refresh(token)
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        })
         res.json({
             accessToken
         })
@@ -108,7 +119,11 @@ const logout = async (req, res, next) => {
     try {
         const token = req.cookies.refreshToken;
         await authServices.logout(token)
-        res.clearCookie("refreshToken")
+        res.clearCookie("refreshToken", {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax'
+        })
         res.json({
             message: "logout successful"
         })
@@ -129,7 +144,9 @@ const googleLogin = async (req, res, next) => {
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: false
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
 
         res.status(200).json({

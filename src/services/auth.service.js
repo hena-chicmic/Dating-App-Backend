@@ -112,35 +112,36 @@ const forgotPassword = async (email) => {
     return true;
 }
 
-const refresh = async (token) => {
+const refresh = async (oldToken) => {
     try {
-
-        if (!token) {
-            throw new Error("Refresh token missing");
+        if (!oldToken) {
+            throw new AuthenticationError("Refresh token missing");
         }
 
-        const decoded = verifyToken(token, process.env.REFRESH_SECRET);
+    const decoded = verifyToken(oldToken, process.env.REFRESH_SECRET);
 
-        if (decoded.type !== "refresh") {
-            throw new Error("Invalid token type");
-        }
-
-        const isValid = await authRepository.refresh(token)
-
-        if (!isValid) {
-            throw new Error("Token not recognized or expired securely");
-        }
-
-        const accessToken = generateAccessToken({
-            user_id: decoded.user_id,
-        });
-
-        return accessToken;
-
-    } catch (error) {
-        throw new Error("Invalid or expired refresh token");
+    if (decoded.type !== "refresh") {
+        throw new AuthenticationError("Invalid token type");
     }
+
+    // Generate new pair for rotation
+    const newAccessToken = generateAccessToken({ user_id: decoded.user_id });
+    const newRefreshToken = generateRefreshToken({ user_id: decoded.user_id, type: "refresh" });
+
+    const userId = await authRepository.refresh(oldToken, newRefreshToken);
+
+    if (!userId) {
+        throw new AuthenticationError("Token not recognized or expired securely");
+    }
+
+    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+
+} catch (error) {
+    if (error instanceof AuthenticationError) throw error;
+    throw new AuthenticationError("Invalid or expired refresh token");
+}
 };
+
 
 const resetPassword = async (email, newPassword, otp) => {
     const hashedPassword = await hashPassword(newPassword)

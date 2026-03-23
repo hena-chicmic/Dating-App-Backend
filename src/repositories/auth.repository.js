@@ -274,14 +274,45 @@ const resetPassword = async (email, newHashedPassword, otp) => {
     }
 };
 
-const refresh = async (token) => {
-    const result = await db.query(
-        "SELECT * FROM refresh_tokens WHERE token=$1 AND expires_at > NOW()",
-        [token]
+const refresh = async (oldToken, newToken) => {
+    const client = await db.connect();
+    try {
+        await client.query('BEGIN');
+
+    // 1. Verify existence and expiration
+    const result = await client.query(
+        "SELECT user_id FROM refresh_tokens WHERE token=$1 AND expires_at > NOW()",
+        [oldToken]
     );
 
-    return result.rows.length > 0;
+    if (result.rows.length === 0) {
+        await client.query('COMMIT');
+        return null;
+    }
+
+    const userId = result.rows[0].user_id;
+
+    // 2. Delete the old token (Rotation)
+    await client.query("DELETE FROM refresh_tokens WHERE token=$1", [oldToken]);
+
+    // 3. Save the new token
+    await client.query(
+        `INSERT INTO refresh_tokens (user_id, token, expires_at)
+         VALUES ($1, $2, NOW() + INTERVAL '7 days')`,
+        [userId, newToken]
+    );
+
+    await client.query('COMMIT');
+    return userId;
+} catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+} finally {
+    client.release();
+}
 };
+
+
 
 const logout = async (token) => {
     await db.query(
