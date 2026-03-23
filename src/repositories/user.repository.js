@@ -158,7 +158,7 @@ const deleteMedia = async (userId, mediaId) => {
     `;
 
     const checkResult = await db.query(
-        `SELECT media_url FROM user_media WHERE id = $1 AND user_id = $2`,
+        `SELECT media_url, is_primary FROM user_media WHERE id = $1 AND user_id = $2`,
         [mediaId, userId]
     );
 
@@ -178,7 +178,7 @@ const deleteMedia = async (userId, mediaId) => {
         const cloudinary = require('../config/cloudinary');
         await cloudinary.uploader.destroy(publicIdWithFolder);
     } catch (err) {
-        console.error("Failed to delete asset from Cloudinary:", err.message);
+        logger.error(`Failed to delete asset from Cloudinary for user ${userId}: ${err.message}`);
     }
 
     if (wasPrimary) {
@@ -303,8 +303,13 @@ const getUserProfile = async (requestingUserId, targetUserId) => {
         FROM users u
         LEFT JOIN user_profiles p ON u.id = p.user_id
         WHERE u.id = $1 AND u.is_banned = FALSE
+        AND NOT EXISTS (
+            SELECT 1 FROM blocks b 
+            WHERE (b.blocker_id = $1 AND b.blocked_id = $2) 
+               OR (b.blocker_id = $2 AND b.blocked_id = $1)
+        )
     `;
-    const result = await db.query(query, [targetUserId]);
+    const result = await db.query(query, [targetUserId, requestingUserId]);
 
     if (!result.rows.length) return null;
 

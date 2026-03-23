@@ -1,6 +1,8 @@
 const messageRepository = require('../repositories/message.repository');
 const matchRepository = require('../repositories/match.repository');
+const userRepository = require('../repositories/user.repository');
 const { addNotificationJob } = require('../queues/notification.queue');
+const logger = require('../utils/logger');
 
 const sendMessage = async (matchId, senderId, text, mediaUrl = null, mediaType = null) => {
 
@@ -12,19 +14,17 @@ const sendMessage = async (matchId, senderId, text, mediaUrl = null, mediaType =
 
     const message = await messageRepository.saveMessage(matchId, senderId, text, mediaUrl, mediaType);
 
-    const receiverId = (targetMatch.user1_id === parseInt(senderId)) ? targetMatch.user2_id : targetMatch.user1_id;
+    // In fetchUserMatches, user_id belongs to the partner, so it is the receiver ID
+    const receiverId = targetMatch.user_id;
 
     if (receiverId) {
         try {
-
-            await addNotificationJob(
-                receiverId,
-                'new_message',
-                matchId,
-                "You have a new message!"
-            );
+            const sender = await userRepository.getMyProfile(senderId);
+            if (sender) {
+                await addNotificationJob(receiverId, 'new_message', matchId, `New message from ${sender.username}`);
+            }
         } catch (err) {
-            console.error('Failed to create new_message notification:', err.message);
+            logger.error(`Notification error on send_message: ${err.message}`);
         }
     }
 

@@ -14,6 +14,15 @@ class InteractionRepository {
         return result.rows[0];
     }
 
+    async getInteraction(userId, targetUserId) {
+        const query = `
+            SELECT * FROM interactions 
+            WHERE user_id = $1 AND target_user_id = $2;
+        `;
+        const result = await db.query(query, [userId, targetUserId]);
+        return result.rows[0];
+    }
+
     async getSentLikes(userId) {
         const query = `
             SELECT
@@ -27,6 +36,12 @@ class InteractionRepository {
             JOIN users u ON i.target_user_id = u.id
             LEFT JOIN user_profiles p ON u.id = p.user_id
             WHERE i.user_id = $1 AND i.action = 'like'
+            AND u.is_banned = FALSE
+            AND NOT EXISTS (
+                SELECT 1 FROM blocks b 
+                WHERE (b.blocker_id = $1 AND b.blocked_id = u.id) 
+                   OR (b.blocker_id = u.id AND b.blocked_id = $1)
+            )
             ORDER BY i.created_at DESC
         `;
         const result = await db.query(query, [userId]);
@@ -46,6 +61,12 @@ class InteractionRepository {
             JOIN users u ON i.user_id = u.id
             LEFT JOIN user_profiles p ON u.id = p.user_id
             WHERE i.target_user_id = $1 AND i.action = 'like'
+            AND u.is_banned = FALSE
+            AND NOT EXISTS (
+                SELECT 1 FROM blocks b 
+                WHERE (b.blocker_id = $1 AND b.blocked_id = u.id) 
+                   OR (b.blocker_id = u.id AND b.blocked_id = $1)
+            )
             ORDER BY i.created_at DESC
         `;
         const result = await db.query(query, [userId]);

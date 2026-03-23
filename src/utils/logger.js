@@ -27,7 +27,13 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 logger.stream = {
-    write: (message) => logger.info(message.trim())
+    write: (message) => {
+        try {
+            logger.info(JSON.parse(message));
+        } catch {
+            logger.info(message.trim());
+        }
+    }
 };
 
 module.exports = logger;

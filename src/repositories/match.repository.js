@@ -26,6 +26,17 @@ class MatchRepository {
         return result.rows[0];
     }
 
+    async findExistingMatch(userA, userB) {
+        const user1 = Math.min(userA, userB);
+        const user2 = Math.max(userA, userB);
+        const query = `
+            SELECT id, user1_id, user2_id, created_at FROM matches 
+            WHERE user1_id = $1 AND user2_id = $2 AND is_active = TRUE;
+        `;
+        const result = await db.query(query, [user1, user2]);
+        return result.rows[0];
+    }
+
     async fetchUserMatches(userId) {
         const query = `
             SELECT

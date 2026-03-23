@@ -279,9 +279,15 @@ const refresh = async (oldToken, newToken) => {
     try {
         await client.query('BEGIN');
 
-        // 1. Verify existence and expiration
+        // 1. Verify existence, expiration, and user status
         const result = await client.query(
-            "SELECT user_id FROM refresh_tokens WHERE token=$1 AND expires_at > NOW()",
+            `SELECT rt.user_id 
+             FROM refresh_tokens rt
+             JOIN users u ON rt.user_id = u.id
+             WHERE rt.token=$1 
+               AND rt.expires_at > NOW()
+               AND u.is_banned = FALSE
+               AND u.is_active = TRUE`,
             [oldToken]
         );
 

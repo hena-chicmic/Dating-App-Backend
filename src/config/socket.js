@@ -1,5 +1,6 @@
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
+const logger = require("../utils/logger");
 
 let io;
 
@@ -24,23 +25,23 @@ const initSocket = (server) => {
       socket.userId = decoded.user_id || decoded.id || decoded.userId;
 
       if (!socket.userId) {
-          console.warn("Socket connected but no recognizable user id found in token:", decoded);
+          logger.warn(`Socket connected but no recognizable user id found in token: ${JSON.stringify(decoded)}`);
       }
 
       next();
     } catch (err) {
-      console.error("Socket authentication rejected:", err.message);
+      logger.error(`Socket authentication rejected: ${err.message}`);
       next(new Error("Authentication error: Invalid token"));
     }
   });
 
   io.on("connection", (socket) => {
-    console.log("User connected:", socket.id, "UserId:", socket.userId);
+    logger.info(`User connected: ${socket.id} - UserId: ${socket.userId}`);
 
     require("../socket/socket.handlers")(socket, io);
 
     socket.on("disconnect", () => {
-      console.log("User disconnected:", socket.id);
+      logger.info(`User disconnected: ${socket.id}`);
     });
   });
 };

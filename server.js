@@ -3,6 +3,7 @@ const app = require('./src/app');
 const pool = require('./src/config/db');
 const { initSocket } = require('./src/config/socket');
 const { getRedisClient } = require('./src/config/redis');
+const { setupMaintenanceJobs } = require('./src/queues/maintenance.queue');
 
 const PORT = process.env.PORT || 3000;
 
@@ -27,6 +28,7 @@ const startServer = async () => {
         });
 
         initSocket(server);
+        await setupMaintenanceJobs();
     } catch (error) {
         console.error('Failed to start server:', error.message);
         process.exit(1);
