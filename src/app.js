@@ -17,8 +17,12 @@ const reportRoutes = require('./routes/report.routes');
 
 const userRoutes = require('./routes/user.routes');
 const callRoutes = require('./routes/call.routes');
+const morgan = require('morgan');
+const logger = require('./utils/logger');
 
 const app = express();
+
+app.use(morgan('combined', { stream: logger.stream }));
 
 app.use(cors({
     origin: '*',
