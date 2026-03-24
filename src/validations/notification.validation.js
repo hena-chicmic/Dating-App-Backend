@@ -1,7 +1,11 @@
 const Joi = require('joi');
 
 const notificationIdParamSchema = Joi.object({
-    notification_id: Joi.number().integer().required()
+    notificationId: Joi.number()
+        .integer()
+        .positive()
+        .strict()
+        .required()
 });
 
 module.exports = {

@@ -63,7 +63,7 @@ const verifyEmail = async (email, otp) => {
         const userId = userResult.rows[0].id;
 
         const otpResult = await client.query(
-            `SELECT * FROM email_verifications
+            `SELECT expires_at FROM email_verifications
              WHERE user_id=$1 AND OTPtoken=$2`,
             [userId, otp]
         );
@@ -145,7 +145,7 @@ const login = async (email, refreshToken) => {
         await client.query('BEGIN');
 
         const result = await client.query(
-            `SELECT id,username,email,password_hash,is_verified,is_banned
+            `SELECT id, username, email, password_hash, is_verified, is_banned
              FROM users
              WHERE email=$1`,
             [email]
@@ -223,7 +223,7 @@ const resetPassword = async (email, newHashedPassword, otp) => {
         const userId = userResult.rows[0].id;
 
         const result = await client.query(
-            `SELECT user_id, expires_at, otp_token, attempts
+            `SELECT expires_at, otp_token, attempts
              FROM password_resets
              WHERE user_id=$1`,
             [userId]
@@ -274,13 +274,48 @@ const resetPassword = async (email, newHashedPassword, otp) => {
     }
 };
 
-const refresh = async (token) => {
-    const result = await db.query(
-        "SELECT * FROM refresh_tokens WHERE token=$1 AND expires_at > NOW()",
-        [token]
-    );
+const refresh = async (oldToken, newToken) => {
+    const client = await db.connect();
+    try {
+        await client.query('BEGIN');
 
-    return result.rows.length > 0;
+        // 1. Verify existence, expiration, and user status
+        const result = await client.query(
+            `SELECT rt.user_id 
+             FROM refresh_tokens rt
+             JOIN users u ON rt.user_id = u.id
+             WHERE rt.token=$1 
+               AND rt.expires_at > NOW()
+               AND u.is_banned = FALSE
+               AND u.is_active = TRUE`,
+            [oldToken]
+        );
+
+        if (result.rows.length === 0) {
+            await client.query('COMMIT');
+            return null;
+        }
+
+        const userId = result.rows[0].user_id;
+
+        // 2. Delete the old token (Rotation)
+        await client.query("DELETE FROM refresh_tokens WHERE token=$1", [oldToken]);
+
+        // 3. Save the new token
+        await client.query(
+            `INSERT INTO refresh_tokens (user_id, token, expires_at)
+             VALUES ($1, $2, NOW() + INTERVAL '7 days')`,
+            [userId, newToken]
+        );
+
+        await client.query('COMMIT');
+        return userId;
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 };
 
 const logout = async (token) => {
@@ -329,7 +364,6 @@ const googleLogin = async (email, uniqueUsername, hashedPassword, dummyDob, prof
             [user.id, profilePhotoUrl]
         );
 
-        // ALWAYS Ensure a primary photo exists if provided by Google
         if (profilePhotoUrl) {
             await client.query(
                 `INSERT INTO user_media (user_id, media_url, media_type, is_primary)

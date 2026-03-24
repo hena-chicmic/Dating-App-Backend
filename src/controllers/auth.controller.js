@@ -1,5 +1,7 @@
 const authServices = require('../services/auth.service')
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const register = async (req, res, next) => {
     try {
         const { email, password, username, date_of_birth } = req.body;
@@ -12,7 +14,8 @@ const register = async (req, res, next) => {
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: false
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax'
         })
 
         res.status(201).json({
@@ -55,7 +58,8 @@ const login = async (req, res, next) => {
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: false
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax'
         })
 
         res.status(200).json({
@@ -95,7 +99,14 @@ const resetPassword = async (req, res, next) => {
 const refresh = async (req, res, next) => {
     try {
         const token = req.cookies.refreshToken;
-        const accessToken = await authServices.refresh(token)
+        const { accessToken, refreshToken: newRefreshToken } = await authServices.refresh(token)
+        
+        res.cookie("refreshToken", newRefreshToken, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax'
+        });
+
         res.json({
             accessToken
         })
@@ -129,7 +140,8 @@ const googleLogin = async (req, res, next) => {
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: false
+            secure: isProduction,
+            sameSite: isProduction ? 'strict' : 'lax'
         });
 
         res.status(200).json({

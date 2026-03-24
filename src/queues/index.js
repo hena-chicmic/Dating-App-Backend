@@ -2,6 +2,7 @@ const { emailQueue, queueVerificationEmail, queuePasswordResetEmail } = require(
 const { discoveryQueue, queueProfileRecalculation } = require('./discovery.queue');
 const { matchQueue, addMatchJob } = require('./match.queue');
 const { notificationQueue, addNotificationJob } = require('./notification.queue');
+const { maintenanceQueue } = require('./maintenance.queue');
 
 module.exports = {
     emailQueue,
@@ -12,5 +13,6 @@ module.exports = {
     matchQueue,
     addMatchJob,
     notificationQueue,
-    addNotificationJob
+    addNotificationJob,
+    maintenanceQueue
 };

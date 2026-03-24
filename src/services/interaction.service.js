@@ -1,6 +1,7 @@
 const interactionRepository = require('../repositories/interaction.repository');
 const discoveryService = require('./discovery.service');
 const { addMatchJob, addNotificationJob } = require('../queues');
+const logger = require('../utils/logger');
 
 const recordInteraction = async (userId, targetUserId, action) => {
     if (!['like', 'dislike'].includes(action)) {
@@ -9,6 +10,13 @@ const recordInteraction = async (userId, targetUserId, action) => {
 
     if (userId === targetUserId) {
         throw new Error("You cannot swipe on yourself");
+    }
+
+    // Deduplication check: Has the user already liked/disliked this person?
+    const existing = await interactionRepository.getInteraction(userId, targetUserId);
+    if (existing && existing.action === action) {
+        logger.info(`Ignored duplicate ${action} from user ${userId} to ${targetUserId}`);
+        return existing;
     }
 
     const interaction = await interactionRepository.saveInteraction(userId, targetUserId, action);
@@ -25,7 +33,7 @@ const recordInteraction = async (userId, targetUserId, action) => {
                 "Someone liked your profile!"
             );
         } catch (err) {
-            console.error('Failed to dispatch new_like notification job:', err.message);
+            logger.error(`Failed to dispatch new_like notification job: ${err.message}`);
         }
     }
 

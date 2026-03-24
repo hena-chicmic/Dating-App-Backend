@@ -1,17 +1,23 @@
-const {Worker} = require('bullmq');
-const {getRedisClient} = require('../config/redis');
+const { Worker } = require('bullmq');
+const { getRedisClient } = require('../config/redis');
 const emailService = require('../services/email.service');
+const logger = require('../utils/logger').child({ component: 'EmailWorker' });
 
 const emailWorker = new Worker('email-queue', async (job) => {
-    console.log(`[Queue] Processing job ${job.id} of type ${job.name}...`);
+    logger.info(`[Queue] Processing job ${job.id} of type ${job.name}...`);
 
-    if (job.name === 'verification-email') {
-        const { email, otp } = job.data;
-        await emailService.sendVerificationEmail(email, otp);
-    }
-    else if (job.name === 'password-reset-email') {
-        const { email, otp } = job.data;
-        await emailService.sendPasswordResetEmail(email, otp);
+    try {
+        if (job.name === 'verification-email') {
+            const { email, otp } = job.data;
+            await emailService.sendVerificationEmail(email, otp);
+        }
+        else if (job.name === 'password-reset-email') {
+            const { email, otp } = job.data;
+            await emailService.sendPasswordResetEmail(email, otp);
+        }
+    } catch (error) {
+        logger.error(`Error in Email Worker for ${job.name}: ${error.message}`);
+        throw error;
     }
 }, {
     connection: getRedisClient(),
@@ -23,9 +29,11 @@ const emailWorker = new Worker('email-queue', async (job) => {
 });
 
 emailWorker.on('completed', job => {
-    console.log(`[Queue] Email job ${job.id} successfully completed`);
+    logger.info(`[Queue] Email job ${job.id} successfully completed`);
 });
 
 emailWorker.on('failed', (job, err) => {
-    console.error(`[Queue] Email job ${job.id} failed:`, err.message);
+    logger.error(`[Queue] Email job ${job?.id} failed: ${err.message}`);
 });
+
+module.exports = emailWorker;

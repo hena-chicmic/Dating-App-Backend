@@ -3,10 +3,17 @@ const { getIO } = require('../config/socket');
 const onlineUsers = require('../socket/online-users');
 const notificationService = require('./notification.service');
 const cache = require('../utils/cache');
+const logger = require('../utils/logger');
 
 const TTL_MATCHES = 2 * 60;
 
 const checkAndCreateMatch = async (userId, targetUserId) => {
+    // Check if a match already exists for this pair to prevent race conditions
+    const existingMatch = await matchRepository.findExistingMatch(userId, targetUserId);
+    if (existingMatch) {
+        logger.info(`Skipped duplicate match creation for users ${userId} and ${targetUserId}`);
+        return existingMatch;
+    }
 
     const isMutual = await matchRepository.checkMutualLike(userId, targetUserId);
 
@@ -24,15 +31,15 @@ const checkAndCreateMatch = async (userId, targetUserId) => {
                 const socketB = await onlineUsers.get(parseInt(targetUserId));
                 if (socketB) io.to(socketB).emit('new_match', { ...payload, matchedWith: userId });
             } catch (err) {
-
-                console.error('Socket emit error on new match:', err.message);
+                logger.error(`Socket emit error on new match: ${err.message}`);
             }
 
             try {
-                await notificationService.createNotifications(userId, 'new_match', newMatch.id, "You have a new match!");
-                await notificationService.createNotifications(targetUserId, 'new_match', newMatch.id, "You have a new match!");
+                const { addNotificationJob } = require('../queues');
+                await addNotificationJob(userId, 'new_match', newMatch.id, "You have a new match!");
+                await addNotificationJob(targetUserId, 'new_match', newMatch.id, "You have a new match!");
             } catch (err) {
-                console.error('Notification creation error on new match:', err.message);
+                logger.error(`Failed to queue notification jobs for match ${newMatch.id}: ${err.message}`);
             }
 
             await cache.del(`user:${userId}:matches`);
