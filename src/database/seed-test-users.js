@@ -1,5 +1,6 @@
 require('../config/env');
-const { connectDB, mongoose } = require('../config/db');
+const connectDB = require('../config/db');
+const mongoose = require('mongoose');
 const User = require('../models/user.model');
 const { hashPassword } = require('../utils/hash');
 

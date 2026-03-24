@@ -1,10 +1,9 @@
 const Joi = require('joi');
 
 const notificationIdParamSchema = Joi.object({
-    notificationId: Joi.number()
-        .integer()
-        .positive()
-        .strict()
+    notificationId: Joi.string()
+        .hex()
+        .length(24)
         .required()
 });
 

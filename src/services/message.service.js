@@ -7,7 +7,7 @@ const logger = require('../utils/logger');
 const sendMessage = async (matchId, senderId, text, mediaUrl = null, mediaType = null) => {
 
     const matches = await matchRepository.fetchUserMatches(senderId);
-    const targetMatch = matches.find(m => m.match_id === parseInt(matchId));
+    const targetMatch = matches.find(m => m.match_id.toString() === matchId.toString());
     if (!targetMatch) {
         throw new Error('You are not a participant in this match.');
     }

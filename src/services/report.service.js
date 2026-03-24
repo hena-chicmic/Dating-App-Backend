@@ -7,7 +7,7 @@ const reportUser = async (reporterId, reportedUserId, reason, description) => {
         throw new Error('Reported user ID and reason are required.');
     }
 
-    if (reporterId === parseInt(reportedUserId)) {
+    if (reporterId.toString() === reportedUserId.toString()) {
         throw new Error('You cannot report yourself.');
     }
 

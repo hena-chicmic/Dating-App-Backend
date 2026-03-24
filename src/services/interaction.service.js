@@ -59,7 +59,7 @@ const unblockUser = async (userId, targetUserId) => {
 };
 
 const blockUser = async (userId, targetUserId) => {
-    if (userId === parseInt(targetUserId)) {
+    if (userId.toString() === targetUserId.toString()) {
         throw new Error("You cannot block yourself.");
     }
     return await interactionRepository.blockUser(userId, targetUserId);

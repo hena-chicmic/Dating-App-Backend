@@ -1,18 +1,16 @@
 const Joi = require('joi');
 
 const matchIdParamSchema = Joi.object({
-    matchId: Joi.number()
-        .integer()
-        .positive()
-        .strict()
+    matchId: Joi.string()
+        .hex()
+        .length(24)
         .required()
 });
 
 const messageIdParamSchema = Joi.object({
-    messageId: Joi.number()
-        .integer()
-        .positive()
-        .strict()
+    messageId: Joi.string()
+        .hex()
+        .length(24)
         .required()
 });
 

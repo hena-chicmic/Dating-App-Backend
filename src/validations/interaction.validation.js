@@ -1,9 +1,9 @@
 const Joi = require('joi');
 
 const swipeSchema = Joi.object({
-    targetUserId: Joi.number()
-        .integer()
-        .positive()
+    targetUserId: Joi.string()
+        .hex()
+        .length(24)
         .required()
         .messages({
             'any.required': 'Target user ID is required'
@@ -21,7 +21,7 @@ const swipeSchema = Joi.object({
 .custom((value, helpers) => {
     const currentUserId = helpers?.prefs?.context?.userId;
 
-    if (value.targetUserId === currentUserId) {
+    if (value.targetUserId.toString() === currentUserId.toString()) {
         return helpers.message('You cannot swipe on yourself');
     }
 
