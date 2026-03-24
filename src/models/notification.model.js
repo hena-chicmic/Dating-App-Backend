@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['new_match', 'new_message', 'profile_view', 'system', 'missed_call'],
+        enum: ['new_match', 'new_like', 'new_message', 'profile_view', 'system', 'missed_call'],
         required: true
     },
     reference_id: {

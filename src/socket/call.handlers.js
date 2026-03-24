@@ -84,6 +84,9 @@ module.exports = (socket, io) => {
 
     socket.on('call_reject', async ({ callId, callerId, matchId }) => {
         try {
+            const authorized = await matchRepository.isUserInMatch(socket.userId, matchId);
+            if (!authorized) return;
+
             await callService.updateStatus(callId, 'rejected');
 
             const callerSocketId = await onlineUsers.get(callerId.toString());

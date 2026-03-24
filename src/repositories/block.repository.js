@@ -1,6 +1,6 @@
+const mongoose = require('mongoose');
 const Block = require('../models/block.model');
 const Match = require('../models/match.model');
-const { mongoose } = require('../config/db');
 
 class BlockRepository {
     async blockUser(blockerId, blockedId) {

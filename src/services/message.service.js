@@ -12,10 +12,10 @@ const sendMessage = async (matchId, senderId, text, mediaUrl = null, mediaType =
         throw new Error('You are not a participant in this match.');
     }
 
-    const message = await messageRepository.saveMessage(matchId, senderId, text, mediaUrl, mediaType);
-
     // In fetchUserMatches, user_id belongs to the partner, so it is the receiver ID
     const receiverId = targetMatch.user_id;
+
+    const message = await messageRepository.saveMessage(matchId, senderId, receiverId, text, mediaUrl, mediaType);
 
     if (receiverId) {
         try {

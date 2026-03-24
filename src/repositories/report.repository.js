@@ -1,4 +1,4 @@
-const { mongoose } = require('../config/db');
+const mongoose = require('mongoose');
 const Report = require('../models/report.model');
 const Block = require('../models/block.model');
 const Match = require('../models/match.model');

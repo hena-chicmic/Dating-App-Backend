@@ -1,12 +1,13 @@
 const Message = require('../models/message.model');
 
-const saveMessage = async (matchId, senderId, messageText, mediaUrl = null, mediaType = null) => {
+const saveMessage = async (matchId, senderId, receiverId, messageText, mediaUrl = null, mediaType = null) => {
     const newMessage = new Message({
         match_id: matchId,
         sender_id: senderId,
-        message_text: messageText,
+        receiver_id: receiverId,
+        content_text: messageText,
         media_url: mediaUrl,
-        media_type: mediaType
+        content_type: mediaType || 'text'
     });
     return await newMessage.save();
 };
@@ -31,9 +32,9 @@ const getMessagesByMatch = async (matchId, limit = 50, offset = 0) => {
         id: m._id,
         match_id: m.match_id,
         sender_id: m.sender_id._id,
-        message_text: m.message_text,
+        message_text: m.content_text,
         media_url: m.media_url,
-        media_type: m.media_type,
+        media_type: m.content_type,
         is_read: m.is_read,
         created_at: m.created_at,
         sender_username: m.sender_id.username

@@ -79,13 +79,7 @@ const updateMyInterests = async (userId, interestsIds) => {
 };
 
 const getUserProfile = async (requestingUserId, targetUserId) => {
-    const key = `user:${targetUserId}:public`;
-    const cached = await cache.get(key);
-    if (cached) return cached;
-
-    const profile = await userRepository.getUserProfile(requestingUserId, targetUserId);
-    await cache.set(key, profile, TTL.PUBLIC_PROFILE);
-    return profile;
+    return await userRepository.getUserProfile(requestingUserId, targetUserId);
 };
 
 const deactivateAccount = async (userId) => {

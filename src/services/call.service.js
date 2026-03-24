@@ -25,7 +25,10 @@ class CallService {
         return log;
     }
 
-    async getHistory(matchId, page = 1, limit = 50) {
+    async getHistory(matchId, userId, page = 1, limit = 50) {
+        const authorized = await require('../repositories/match.repository').isUserInMatch(userId, matchId);
+        if (!authorized) throw new Error('Unauthorized access to match call history');
+
         const offset = (page - 1) * limit;
         return await callRepository.getCallHistory(matchId, limit, offset);
     }

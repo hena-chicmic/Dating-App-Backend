@@ -44,10 +44,10 @@ class DiscoveryRepository {
         }
 
         // Age filter
-        if (prefs.preferred_age_min && prefs.preferred_age_max) {
+        if (prefs.min_preferred_age && prefs.max_preferred_age) {
             const today = new Date();
-            const minDate = new Date(today.getFullYear() - prefs.preferred_age_max - DISCOVERY.AGE_FUDGE_FACTOR, today.getMonth(), today.getDate());
-            const maxDate = new Date(today.getFullYear() - prefs.preferred_age_min + DISCOVERY.AGE_FUDGE_FACTOR, today.getMonth(), today.getDate());
+            const minDate = new Date(today.getFullYear() - prefs.max_preferred_age - DISCOVERY.AGE_FUDGE_FACTOR, today.getMonth(), today.getDate());
+            const maxDate = new Date(today.getFullYear() - prefs.min_preferred_age + DISCOVERY.AGE_FUDGE_FACTOR, today.getMonth(), today.getDate());
             matchQuery.date_of_birth = { $gte: minDate, $lte: maxDate };
         }
 
@@ -100,7 +100,7 @@ class DiscoveryRepository {
             id: u._id,
             username: u.username,
             age: this._calculateAge(u.date_of_birth),
-            bio: u.profile.bio,
+            bio: u.bio,
             profile_photo_url: u.profile.profile_photo_url,
             location_city: u.profile.location_city,
             location_country: u.profile.location_country,
