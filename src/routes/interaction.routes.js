@@ -4,6 +4,7 @@ const { swipe, getSentLikes, getReceivedLikes, unblockUser, blockUser } = requir
 const isAuthenticated = require('../middleware/auth.middleware');
 const validate = require('../middleware/validation.middleware');
 const { swipeSchema } = require('../validations/interaction.validation');
+const { targetUserIdParamSchema } = require('../validations/user.validation');
 const { swipeLimiter } = require('../middleware/rateLimiter.middleware');
 
 /**
@@ -84,7 +85,7 @@ router.get('/likes/received', isAuthenticated, getReceivedLikes);
  *       200:
  *         description: User unblocked successfully
  */
-router.delete('/blocks/:targetUserId', isAuthenticated, unblockUser);
+router.delete('/blocks/:targetUserId', isAuthenticated, validate(targetUserIdParamSchema, 'params'), unblockUser);
 
 /**
  * @swagger
@@ -105,6 +106,6 @@ router.delete('/blocks/:targetUserId', isAuthenticated, unblockUser);
  *       200:
  *         description: User blocked successfully
  */
-router.post('/blocks/:targetUserId', isAuthenticated, blockUser);
+router.post('/blocks/:targetUserId', isAuthenticated, validate(targetUserIdParamSchema, 'params'), blockUser);
 
 module.exports = router;

@@ -38,9 +38,9 @@ class DiscoveryRepository {
             'bio': { $exists: true, $ne: '' }
         };
 
-        // Gender filter
-        if (prefs.preferred_gender && prefs.preferred_gender !== 'both') {
-            matchQuery.gender = prefs.preferred_gender;
+        // Gender filter — use the top-level interested_in field, not preferences
+        if (user.interested_in && user.interested_in !== 'both') {
+            matchQuery.gender = user.interested_in;
         }
 
         // Age filter
@@ -84,8 +84,8 @@ class DiscoveryRepository {
             }
         });
 
-        // Add sorting (prioritize nearby, then common interests, then age)
-        const sortStage = { common_interests: -1, created_at: -1 };
+        // Add sorting (prioritize common interests, then newest users, then distance)
+        const sortStage = { common_interests: -1, createdAt: -1 };
         if (hasCoords) {
             sortStage.distance_km = 1; 
         }

@@ -148,9 +148,9 @@ const getMyInterests = async (req, res, next) => {
 const updateMyInterests = async (req, res, next) => {
   try {
     const userId = req.user.user_id;
-    const { interestIds } = req.body;
+    const { interestNames } = req.body;
 
-    const updatedInterests = await userServices.updateMyInterests(userId, interestIds);
+    const updatedInterests = await userServices.updateMyInterests(userId, interestNames);
 
     await queueProfileRecalculation(userId);
 

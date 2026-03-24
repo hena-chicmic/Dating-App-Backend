@@ -46,7 +46,7 @@ const updatePreferencesSchema = Joi.object({
 })
 
 const updateInterestsSchema = Joi.object({
-    interestIds: Joi.array().items(Joi.string()).required()
+    interestNames: Joi.array().items(Joi.string()).min(1).required()
 });
 
 const mediaIdParamSchema = Joi.object({

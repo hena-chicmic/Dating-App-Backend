@@ -12,8 +12,16 @@ function errorHandler(err, req, res, next) {
     let status = err.status || 'error';
     let message = err.message || "Internal server error";
 
-    // Handle specific DB errors at the middleware level (Postgres constraint violations)
-    if (err.code && err.code.startsWith('23')) {
+    // Handle MongoDB duplicate key errors
+    if (err.code === 11000) {
+        statusCode = 409;
+        status = 'fail';
+        const field = Object.keys(err.keyPattern || {})[0] || 'field';
+        message = `A user with this ${field} already exists.`;
+    }
+
+    // Handle legacy Postgres constraint violations (kept for safety)
+    if (err.code && typeof err.code === 'string' && err.code.startsWith('23')) {
         statusCode = 400;
         status = 'fail';
         message = isProduction 

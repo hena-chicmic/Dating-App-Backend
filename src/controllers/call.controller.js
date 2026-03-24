@@ -5,7 +5,7 @@ const getCallHistory = async (req, res, next) => {
         const { matchId } = req.params;
         const { page = 1, limit = 50 } = req.query;
 
-        const history = await callService.getHistory(matchId, req.user.id, parseInt(page), parseInt(limit));
+        const history = await callService.getHistory(matchId, req.user.user_id, parseInt(page), parseInt(limit));
 
         res.json({
             success: true,

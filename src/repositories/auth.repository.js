@@ -110,6 +110,11 @@ const checkUserExists = async (email) => {
     return !!exists;
 };
 
+const checkUsernameExists = async (username) => {
+    const exists = await User.exists({ username });
+    return !!exists;
+};
+
 const forgotPassword = async (email, otp) => {
     const user = await User.findOne({ email });
 
@@ -232,6 +237,7 @@ const reactivateUser = async (userId) => {
 
 module.exports = {
     checkUserExists,
+    checkUsernameExists,
     register,
     verifyEmail,
     resendVerification,

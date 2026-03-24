@@ -14,6 +14,7 @@ const queuePasswordResetEmail = async(email, otp) => {
 }
 
 module.exports = {
+    emailQueue,
     queueVerificationEmail,
     queuePasswordResetEmail
 };

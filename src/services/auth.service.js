@@ -15,7 +15,11 @@ const register = async (data) => {
 
     const exists = await authRepository.checkUserExists(email)
     if (exists) {
-        throw new Error("user already exists!!")
+        throw new Error("A user with this email already exists.")
+    }
+    const usernameExists = await authRepository.checkUsernameExists(username)
+    if (usernameExists) {
+        throw new Error("This username is already taken.")
     }
     const hashedPassword = await hashPassword(password)
 
