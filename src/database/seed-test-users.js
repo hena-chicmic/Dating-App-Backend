@@ -54,7 +54,8 @@ const testUsers = [
             height: 182,
             location_city: 'Panchkula',
             location_country: 'India',
-            location: { type: 'Point', coordinates: [76.8606, 30.6942] }
+            location: { type: 'Point', coordinates: [76.8606, 30.6942] },
+            profile_photo_url: 'https://res.cloudinary.com/demo/image/upload/v1631234569/sample3.jpg'
         },
         interests: ['Gaming', 'Movies', 'Technology']
     },
@@ -71,7 +72,8 @@ const testUsers = [
             height: 168,
             location_city: 'Zirakpur',
             location_country: 'India',
-            location: { type: 'Point', coordinates: [76.8173, 30.6425] }
+            location: { type: 'Point', coordinates: [76.8173, 30.6425] },
+            profile_photo_url: 'https://res.cloudinary.com/demo/image/upload/v1631234570/sample4.jpg'
         },
         interests: ['Art', 'Yoga', 'Music']
     }
@@ -89,6 +91,23 @@ const seedTestUsers = async () => {
         for (const user of testUsers) {
             user.password_hash = await hashPassword(user.password);
             delete user.password;
+
+            if (user.profile && user.profile.profile_photo_url) {
+                user.profile.media = [{
+                    media_url: user.profile.profile_photo_url,
+                    media_type: 'image',
+                    is_primary: true,
+                    created_at: new Date()
+                }];
+            }
+
+            user.preferences = {
+                discovery_enabled: true,
+                max_distance_km: 100,
+                preferred_age_min: 18,
+                preferred_age_max: 99,
+                preferred_gender: user.interested_in
+            };
         }
 
         await User.insertMany(testUsers);

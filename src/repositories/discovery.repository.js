@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const User = require('../models/user.model');
 const Interaction = require('../models/interaction.model');
 const Block = require('../models/block.model');
@@ -24,7 +25,9 @@ class DiscoveryRepository {
         );
 
         // Compile exclusion list
-        const excludeIds = [...interactedIds, ...blockedIds, userId];
+        const excludeIds = [...interactedIds, ...blockedIds, userId].map(id => 
+            new mongoose.Types.ObjectId(id)
+        );
 
         // Prepare match query
         const matchQuery = {
@@ -32,7 +35,7 @@ class DiscoveryRepository {
             is_active: true,
             is_banned: false,
             'profile.profile_photo_url': { $exists: true, $ne: null },
-            'profile.bio': { $exists: true, $ne: '' }
+            'bio': { $exists: true, $ne: '' }
         };
 
         // Gender filter
