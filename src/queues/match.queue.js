@@ -5,6 +5,8 @@ const matchQueue = new Queue('match-queue', {
     connection: getRedisClient()
 });
 
+const logger = require('../utils/logger').child({ component: 'MatchQueue' });
+
 const addMatchJob = async (userId, targetUserId) => {
     try {
         await matchQueue.add('check-mutual-match', {
@@ -18,9 +20,9 @@ const addMatchJob = async (userId, targetUserId) => {
             removeOnFail: 500
         });
 
-        console.log(`[Queue] Match check job queued for users: ${userId} & ${targetUserId}`);
+        logger.info(`Match check job queued for users: ${userId} & ${targetUserId}`);
     } catch (err) {
-        console.error('[Queue] Error adding job to match-queue:', err.message);
+        logger.error(`Error adding job to match-queue: ${err.message}`);
     }
 };
 

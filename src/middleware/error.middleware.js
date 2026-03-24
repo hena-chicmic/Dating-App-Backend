@@ -1,31 +1,37 @@
+const logger = require('../utils/logger');
+const { AppError } = require('../utils/errors');
+
 function errorHandler(err, req, res, next) {
-    // Log full error for developers
-    console.error(err.stack);
+    // Log full error for developers using Winston
+    logger.error(`${err.message} - ${err.stack}`);
 
     const isProduction = process.env.NODE_ENV === 'production';
     
     // Default error values
-    let statusCode = err.status || 500;
+    let statusCode = err.statusCode || 500;
+    let status = err.status || 'error';
     let message = err.message || "Internal server error";
 
-    // Sanitize message in production
+    // Handle specific DB errors at the middleware level (Postgres constraint violations)
+    if (err.code && err.code.startsWith('23')) {
+        statusCode = 400;
+        status = 'fail';
+        message = isProduction 
+            ? "A conflict occurred with the data provided." 
+            : `Database Error: ${err.detail || err.message}`;
+    }
+
+    // Sanitize message in production for 500 errors
     if (isProduction && statusCode === 500) {
         message = "Something went wrong on our end. Please try again later.";
     }
 
-    // Handle specific DB errors at the middleware level (optional but good)
-    if (err.code && err.code.startsWith('23')) { // Postgres constraint violations
-        statusCode = 400;
-        if (isProduction) {
-            message = "A conflict occurred with the data provided.";
-        }
-    }
-
     res.status(statusCode).json({
         success: false,
+        status: status,
         message: message,
         ...(isProduction ? {} : { stack: err.stack, details: err })
     });
 }
 
-module.exports=errorHandler
+module.exports = errorHandler;

@@ -1,5 +1,6 @@
 const onlineUsers = require('./online-users');
 const matchRepository = require('../repositories/match.repository');
+const logger = require('../utils/logger');
 
 module.exports = (socket, io) => {
 
@@ -10,7 +11,7 @@ module.exports = (socket, io) => {
         }
 
         await onlineUsers.set(userId, socket.id);
-        console.log(`User ${userId} is online (socket: ${socket.id})`);
+        logger.info(`User ${userId} is online (socket: ${socket.id})`);
 
         try {
             const matches = await matchRepository.fetchUserMatches(userId);
@@ -31,7 +32,7 @@ module.exports = (socket, io) => {
                 }
             }
         } catch (err) {
-            console.error('Error in user_online:', err.message);
+            logger.error(`Error in user_online for user ${userId}: ${err.message}`);
         }
     });
 
@@ -42,7 +43,7 @@ module.exports = (socket, io) => {
         const currentSocketId = await onlineUsers.get(userId);
         if (currentSocketId === socket.id) {
             await onlineUsers.delete(userId);
-            console.log(`User ${userId} is offline`);
+            logger.info(`User ${userId} is offline`);
 
             try {
                 const matches = await matchRepository.fetchUserMatches(userId);
@@ -53,7 +54,7 @@ module.exports = (socket, io) => {
                     }
                 }
             } catch (err) {
-                console.error('Error in disconnect presence:', err.message);
+                logger.error(`Error in disconnect presence for user ${userId}: ${err.message}`);
             }
         }
     });

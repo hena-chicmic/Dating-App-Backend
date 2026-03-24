@@ -5,6 +5,7 @@ const { hashPassword, comparePassword } = require('../utils/hash')
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateToken')
 const { verifyToken } = require('../utils/jwt')
 const { OAuth2Client } = require('google-auth-library')
+const { AuthenticationError, NotFoundError } = require('../utils/errors')
 const { queueVerificationEmail, queuePasswordResetEmail } = require('../queues')
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
@@ -112,33 +113,33 @@ const forgotPassword = async (email) => {
     return true;
 }
 
-const refresh = async (token) => {
+const refresh = async (oldToken) => {
     try {
-
-        if (!token) {
-            throw new Error("Refresh token missing");
+        if (!oldToken) {
+            throw new AuthenticationError("Refresh token missing");
         }
 
-        const decoded = verifyToken(token, process.env.REFRESH_SECRET);
+        const decoded = verifyToken(oldToken, process.env.REFRESH_SECRET);
 
         if (decoded.type !== "refresh") {
-            throw new Error("Invalid token type");
+            throw new AuthenticationError("Invalid token type");
         }
 
-        const isValid = await authRepository.refresh(token)
+        // Generate new pair for rotation
+        const newAccessToken = generateAccessToken({ user_id: decoded.user_id });
+        const newRefreshToken = generateRefreshToken({ user_id: decoded.user_id, type: "refresh" });
 
-        if (!isValid) {
-            throw new Error("Token not recognized or expired securely");
+        const userId = await authRepository.refresh(oldToken, newRefreshToken);
+
+        if (!userId) {
+            throw new AuthenticationError("Token not recognized or expired securely");
         }
 
-        const accessToken = generateAccessToken({
-            user_id: decoded.user_id,
-        });
-
-        return accessToken;
+        return { accessToken: newAccessToken, refreshToken: newRefreshToken };
 
     } catch (error) {
-        throw new Error("Invalid or expired refresh token");
+        if (error instanceof AuthenticationError) throw error;
+        throw new AuthenticationError("Invalid or expired refresh token");
     }
 };
 

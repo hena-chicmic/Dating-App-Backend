@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const { getVerificationEmailTemplate, getPasswordResetEmailTemplate } = require('../utils/emailTemplate');
+const logger = require('../utils/logger');
 
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.ethereal.email',
@@ -21,10 +22,10 @@ const sendVerificationEmail = async (toEmail, otp) => {
         };
 
         const info = await transporter.sendMail(mailOptions);
-        console.log(`Verification email sent to ${toEmail}. Message ID: ${info.messageId}`);
+        logger.info(`Verification email sent to ${toEmail}. Message ID: ${info.messageId}`);
         return info;
     } catch (error) {
-        console.error('Error sending verification email:', error);
+        logger.error(`Error sending verification email to ${toEmail}: ${error.message}`);
         throw new Error('Failed to send verification email');
     }
 };
@@ -39,10 +40,10 @@ const sendPasswordResetEmail = async (toEmail, otp) => {
         };
 
         const info = await transporter.sendMail(mailOptions);
-        console.log(`Password reset email sent to ${toEmail}. Message ID: ${info.messageId}`);
+        logger.info(`Password reset email sent to ${toEmail}. Message ID: ${info.messageId}`);
         return info;
     } catch (error) {
-        console.error('Error sending password reset email:', error);
+        logger.error(`Error sending password reset email to ${toEmail}: ${error.message}`);
         throw new Error('Failed to send password reset email');
     }
 };
