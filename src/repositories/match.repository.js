@@ -1,81 +1,120 @@
-const db = require('../config/db');
+const Match = require('../models/match.model');
+const Interaction = require('../models/interaction.model');
+const Block = require('../models/block.model');
 
 class MatchRepository {
 
     async checkMutualLike(userA, userB) {
-        const query = `
-            SELECT 1 FROM interactions
-            WHERE user_id = $1 AND target_user_id = $2 AND action = 'like'
-        `;
-        const result = await db.query(query, [userB, userA]);
-        return result.rows.length > 0;
+        const result = await Interaction.findOne({
+            user_id: userB,
+            target_user_id: userA,
+            action: 'like'
+        });
+        return !!result;
     }
 
     async createMatch(userA, userB) {
+        // Ensure smaller ID is always user1 to guarantee unique pairs
+        const strA = userA.toString();
+        const strB = userB.toString();
+        const user1 = strA < strB ? userA : userB;
+        const user2 = strA < strB ? userB : userA;
 
-        const user1 = Math.min(userA, userB);
-        const user2 = Math.max(userA, userB);
-
-        const query = `
-            INSERT INTO matches (user1_id, user2_id)
-            VALUES ($1, $2)
-            ON CONFLICT (user1_id, user2_id) DO NOTHING
-            RETURNING *;
-        `;
-        const result = await db.query(query, [user1, user2]);
-        return result.rows[0];
+        return await Match.findOneAndUpdate(
+            { user1_id: user1, user2_id: user2 },
+            {},
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
     }
 
     async findExistingMatch(userA, userB) {
-        const user1 = Math.min(userA, userB);
-        const user2 = Math.max(userA, userB);
-        const query = `
-            SELECT id, user1_id, user2_id, created_at FROM matches 
-            WHERE user1_id = $1 AND user2_id = $2 AND is_active = TRUE;
-        `;
-        const result = await db.query(query, [user1, user2]);
-        return result.rows[0];
+        const strA = userA.toString();
+        const strB = userB.toString();
+        const user1 = strA < strB ? userA : userB;
+        const user2 = strA < strB ? userB : userA;
+
+        return await Match.findOne({
+            user1_id: user1,
+            user2_id: user2,
+            status: 'active'
+        });
     }
 
     async fetchUserMatches(userId) {
-        const query = `
-            SELECT
-                m.id as match_id,
-                m.created_at as matched_on,
-                u.id as user_id,
-                u.username,
-                p.profile_photo_url,
-                p.location_city
-            FROM matches m
-            JOIN users u ON (u.id = m.user1_id OR u.id = m.user2_id) AND u.id != $1
-            LEFT JOIN user_profiles p ON u.id = p.user_id
-            WHERE (m.user1_id = $1 OR m.user2_id = $1)
-            AND m.is_active = TRUE
-            AND u.is_banned = FALSE
-            ORDER BY m.created_at DESC;
-        `;
-        const result = await db.query(query, [userId]);
-        return result.rows;
+        const blocks = await Block.find({
+            $or: [{ blocker_id: userId }, { blocked_id: userId }]
+        });
+        const blockedIds = blocks.map(b => 
+            b.blocker_id.toString() === userId.toString() ? b.blocked_id : b.blocker_id
+        );
+
+        const matches = await Match.find({
+            $or: [{ user1_id: userId }, { user2_id: userId }],
+            status: 'active'
+        })
+        .populate({
+            path: 'user1_id',
+            match: { is_banned: false, _id: { $nin: blockedIds } },
+            select: 'username profile.profile_photo_url profile.location_city'
+        })
+        .populate({
+            path: 'user2_id',
+            match: { is_banned: false, _id: { $nin: blockedIds } },
+            select: 'username profile.profile_photo_url profile.location_city'
+        })
+        .sort({ created_at: -1 })
+        .lean();
+
+        const formattedMatches = [];
+
+        for (const match of matches) {
+            // Identify the partner
+            const isUser1 = match.user1_id && match.user1_id._id.toString() === userId.toString();
+            const partner = isUser1 ? match.user2_id : match.user1_id;
+
+            // If partner was filtered out by match conditions (banned/blocked), skip this match
+            if (!partner) continue;
+
+            formattedMatches.push({
+                match_id: match._id,
+                matched_on: match.created_at,
+                user_id: partner._id,
+                username: partner.username,
+                profile_photo_url: partner.profile?.profile_photo_url,
+                location_city: partner.profile?.location_city
+            });
+        }
+
+        return formattedMatches;
     }
 
     async isUserInMatch(userId, matchId) {
-        const query = `
-            SELECT 1 FROM matches
-            WHERE id = $1 AND (user1_id = $2 OR user2_id = $2) AND is_active = TRUE
-        `;
-        const result = await db.query(query, [matchId, userId]);
-        return result.rows.length > 0;
+        const match = await Match.findOne({
+            _id: matchId,
+            $or: [{ user1_id: userId }, { user2_id: userId }],
+            status: 'active'
+        });
+        return !!match;
     }
+
     async getPartner(matchId, userId) {
-        const query = `
-            SELECT u.id, u.username, p.profile_photo_url
-            FROM users u
-            JOIN matches m ON (u.id = m.user1_id OR u.id = m.user2_id) AND u.id != $1
-            LEFT JOIN user_profiles p ON u.id = p.user_id
-            WHERE m.id = $2
-        `;
-        const result = await db.query(query, [userId, matchId]);
-        return result.rows[0];
+        const match = await Match.findById(matchId)
+            .populate('user1_id', 'username profile.profile_photo_url')
+            .populate('user2_id', 'username profile.profile_photo_url')
+            .lean();
+
+        if (!match) return null;
+
+        const isUser1 = match.user1_id && match.user1_id._id.toString() === userId.toString();
+        const partner = isUser1 ? match.user2_id : match.user1_id;
+
+        if (!partner) return null;
+
+        return {
+            id: partner._id,
+            username: partner.username,
+            profile_photo_url: partner.profile?.profile_photo_url
+        };
     }
 }
 

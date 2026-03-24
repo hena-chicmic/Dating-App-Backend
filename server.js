@@ -1,6 +1,6 @@
 require('./src/config/env');
 const app = require('./src/app');
-const { connectDB } = require('./src/config/db');
+const connectDB = require('./src/config/db');
 const { initSocket } = require('./src/config/socket');
 const { getRedisClient } = require('./src/config/redis');
 const { setupMaintenanceJobs } = require('./src/queues/maintenance.queue');

@@ -1,17 +1,27 @@
 const mongoose = require('mongoose');
+const logger = require('../utils/logger');
 
 const connectDB = async () => {
     try {
-        const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/datingapp';
+        // Use the connection string from env, fallback to localhost datingapp
+        const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/datingapp';
+        
         await mongoose.connect(mongoURI);
-        console.log('✅ MongoDB connected successfully.');
-    } catch (err) {
-        console.error('❌ Failed to connect to MongoDB:', err.message);
-        process.exit(1);
+        logger.info('Connected to MongoDB successfully.');
+    } catch (error) {
+        logger.error(`Failed to connect to MongoDB: ${error.message}`);
+        // Exit process with failure
+        process.exit(1); 
     }
 };
 
-module.exports = {
-    connectDB,
-    mongoose
-};
+// Listen for connection errors after initial connection
+mongoose.connection.on('error', err => {
+    logger.error('MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+    logger.warn('MongoDB disconnected. Mongoose will automatically try to reconnect.');
+});
+
+module.exports = connectDB;

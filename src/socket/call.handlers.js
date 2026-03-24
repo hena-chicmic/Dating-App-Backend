@@ -10,7 +10,7 @@ module.exports = (socket, io) => {
             const authorized = await matchRepository.isUserInMatch(callerId, matchId);
             if (!authorized) return;
 
-            const targetSocketId = await onlineUsers.get(parseInt(targetUserId));
+            const targetSocketId = await onlineUsers.get(targetUserId.toString());
             if (!targetSocketId) {
                 return socket.emit('call_failed', { message: 'User is not online.' });
             }
@@ -36,7 +36,7 @@ module.exports = (socket, io) => {
 
             await callService.updateStatus(callId, 'ongoing');
 
-            const callerSocketId = await onlineUsers.get(parseInt(callerId));
+            const callerSocketId = await onlineUsers.get(callerId.toString());
             if (callerSocketId) {
                 io.to(callerSocketId).emit('call_answered', {
                     answererId: socket.userId,
@@ -53,7 +53,7 @@ module.exports = (socket, io) => {
         const authorized = await matchRepository.isUserInMatch(socket.userId, matchId);
         if (!authorized) return;
 
-        const targetSocketId = await onlineUsers.get(parseInt(targetUserId));
+        const targetSocketId = await onlineUsers.get(targetUserId.toString());
         if (!targetSocketId) return;
 
         io.to(targetSocketId).emit('ice_candidate', {
@@ -70,7 +70,7 @@ module.exports = (socket, io) => {
 
             await callService.updateStatus(callId, 'completed');
 
-            const targetSocketId = await onlineUsers.get(parseInt(targetUserId));
+            const targetSocketId = await onlineUsers.get(targetUserId.toString());
             if (targetSocketId) {
                 io.to(targetSocketId).emit('call_ended', {
                     by: socket.userId,
@@ -86,7 +86,7 @@ module.exports = (socket, io) => {
         try {
             await callService.updateStatus(callId, 'rejected');
 
-            const callerSocketId = await onlineUsers.get(parseInt(callerId));
+            const callerSocketId = await onlineUsers.get(callerId.toString());
             if (callerSocketId) {
                 io.to(callerSocketId).emit('call_rejected', {
                     by: socket.userId,
@@ -106,7 +106,7 @@ module.exports = (socket, io) => {
 
             await callService.updateStatus(callId, 'missed');
 
-            const targetSocketId = await onlineUsers.get(parseInt(targetUserId));
+            const targetSocketId = await onlineUsers.get(targetUserId.toString());
             if (targetSocketId) {
                 io.to(targetSocketId).emit('call_ended', {
                     by: socket.userId,

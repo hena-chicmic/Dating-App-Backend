@@ -18,15 +18,15 @@ module.exports = (socket, io) => {
 
             const onlineMatchIds = [];
             for (const m of matches) {
-                if (await onlineUsers.has(m.user_id)) {
-                    onlineMatchIds.push(m.user_id);
+                if (await onlineUsers.has(m.user_id.toString())) {
+                    onlineMatchIds.push(m.user_id.toString());
                 }
             }
 
             socket.emit('online_status', { onlineUsers: onlineMatchIds });
 
             for (const match of matches) {
-                const matchSocketId = await onlineUsers.get(match.user_id);
+                const matchSocketId = await onlineUsers.get(match.user_id.toString());
                 if (matchSocketId) {
                     io.to(matchSocketId).emit('friend_online', { userId });
                 }
@@ -48,7 +48,7 @@ module.exports = (socket, io) => {
             try {
                 const matches = await matchRepository.fetchUserMatches(userId);
                 for (const match of matches) {
-                    const matchSocketId = await onlineUsers.get(match.user_id);
+                    const matchSocketId = await onlineUsers.get(match.user_id.toString());
                     if (matchSocketId) {
                         io.to(matchSocketId).emit('friend_offline', { userId });
                     }

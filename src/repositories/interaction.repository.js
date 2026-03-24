@@ -1,115 +1,128 @@
-const db = require('../config/db');
+const Interaction = require('../models/interaction.model');
+const Block = require('../models/block.model');
+const Match = require('../models/match.model');
+const mongoose = require('mongoose');
 
 class InteractionRepository {
 
     async saveInteraction(userId, targetUserId, action) {
-        const query = `
-            INSERT INTO interactions (user_id, target_user_id, action)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (user_id, target_user_id)
-            DO UPDATE SET action = EXCLUDED.action, created_at = CURRENT_TIMESTAMP
-            RETURNING *;
-        `;
-        const result = await db.query(query, [userId, targetUserId, action]);
-        return result.rows[0];
+        return await Interaction.findOneAndUpdate(
+            { user_id: userId, target_user_id: targetUserId },
+            { action: action },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
     }
 
     async getInteraction(userId, targetUserId) {
-        const query = `
-            SELECT * FROM interactions 
-            WHERE user_id = $1 AND target_user_id = $2;
-        `;
-        const result = await db.query(query, [userId, targetUserId]);
-        return result.rows[0];
+        return await Interaction.findOne({ user_id: userId, target_user_id: targetUserId });
     }
 
     async getSentLikes(userId) {
-        const query = `
-            SELECT
-                u.id,
-                u.username,
-                EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) as age,
-                p.profile_photo_url,
-                p.location_city,
-                i.created_at as liked_on
-            FROM interactions i
-            JOIN users u ON i.target_user_id = u.id
-            LEFT JOIN user_profiles p ON u.id = p.user_id
-            WHERE i.user_id = $1 AND i.action = 'like'
-            AND u.is_banned = FALSE
-            AND NOT EXISTS (
-                SELECT 1 FROM blocks b 
-                WHERE (b.blocker_id = $1 AND b.blocked_id = u.id) 
-                   OR (b.blocker_id = u.id AND b.blocked_id = $1)
-            )
-            ORDER BY i.created_at DESC
-        `;
-        const result = await db.query(query, [userId]);
-        return result.rows;
+        // Find users I blocked or who blocked me
+        const blocks = await Block.find({
+            $or: [{ blocker_id: userId }, { blocked_id: userId }]
+        });
+        const blockedIds = blocks.map(b => 
+            b.blocker_id.toString() === userId.toString() ? b.blocked_id : b.blocker_id
+        );
+
+        const interactions = await Interaction.find({
+            user_id: userId,
+            action: 'like',
+            target_user_id: { $nin: blockedIds }
+        })
+        .populate({
+            path: 'target_user_id',
+            match: { is_banned: false }, // Only fetch if not banned
+            select: 'username date_of_birth profile.profile_photo_url profile.location_city'
+        })
+        .sort({ created_at: -1 })
+        .lean();
+
+        // Filter out any populated targets that were null (because they were banned)
+        return interactions.filter(i => i.target_user_id).map(i => ({
+            id: i.target_user_id._id,
+            username: i.target_user_id.username,
+            age: this._calculateAge(i.target_user_id.date_of_birth),
+            profile_photo_url: i.target_user_id.profile?.profile_photo_url,
+            location_city: i.target_user_id.profile?.location_city,
+            liked_on: i.created_at
+        }));
     }
 
     async getReceivedLikes(userId) {
-        const query = `
-            SELECT
-                u.id,
-                u.username,
-                EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) as age,
-                p.profile_photo_url,
-                p.location_city,
-                i.created_at as liked_on
-            FROM interactions i
-            JOIN users u ON i.user_id = u.id
-            LEFT JOIN user_profiles p ON u.id = p.user_id
-            WHERE i.target_user_id = $1 AND i.action = 'like'
-            AND u.is_banned = FALSE
-            AND NOT EXISTS (
-                SELECT 1 FROM blocks b 
-                WHERE (b.blocker_id = $1 AND b.blocked_id = u.id) 
-                   OR (b.blocker_id = u.id AND b.blocked_id = $1)
-            )
-            ORDER BY i.created_at DESC
-        `;
-        const result = await db.query(query, [userId]);
-        return result.rows;
+        const blocks = await Block.find({
+            $or: [{ blocker_id: userId }, { blocked_id: userId }]
+        });
+        const blockedIds = blocks.map(b => 
+            b.blocker_id.toString() === userId.toString() ? b.blocked_id : b.blocker_id
+        );
+
+        const interactions = await Interaction.find({
+            target_user_id: userId,
+            action: 'like',
+            user_id: { $nin: blockedIds }
+        })
+        .populate({
+            path: 'user_id',
+            match: { is_banned: false },
+            select: 'username date_of_birth profile.profile_photo_url profile.location_city'
+        })
+        .sort({ created_at: -1 })
+        .lean();
+
+        return interactions.filter(i => i.user_id).map(i => ({
+            id: i.user_id._id,
+            username: i.user_id.username,
+            age: this._calculateAge(i.user_id.date_of_birth),
+            profile_photo_url: i.user_id.profile?.profile_photo_url,
+            location_city: i.user_id.profile?.location_city,
+            liked_on: i.created_at
+        }));
     }
 
     async blockUser(blockerId, blockedId) {
-        const client = await db.connect();
+        const session = await mongoose.startSession();
         try {
-            await client.query('BEGIN');
+            session.startTransaction();
 
-            const blockQuery = `
-                INSERT INTO blocks (blocker_id, blocked_id)
-                VALUES ($1, $2)
-                ON CONFLICT (blocker_id, blocked_id) DO NOTHING;
-            `;
-            await client.query(blockQuery, [blockerId, blockedId]);
+            await Block.findOneAndUpdate(
+                { blocker_id: blockerId, blocked_id: blockedId },
+                {},
+                { upsert: true, new: true, session }
+            );
 
-            const matchQuery = `
-                UPDATE matches
-                SET is_active = FALSE
-                WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1);
-            `;
-            await client.query(matchQuery, [blockerId, blockedId]);
+            await Match.updateMany(
+                {
+                    $or: [
+                        { user1_id: blockerId, user2_id: blockedId },
+                        { user1_id: blockedId, user2_id: blockerId }
+                    ]
+                },
+                { status: 'deactivated' },
+                { session }
+            );
 
-            await client.query('COMMIT');
+            await session.commitTransaction();
             return true;
         } catch (error) {
-            await client.query('ROLLBACK');
+            await session.abortTransaction();
             throw error;
         } finally {
-            client.release();
+            session.endSession();
         }
     }
 
     async unblockUser(blockerId, blockedId) {
-        const query = `
-            DELETE FROM blocks
-            WHERE blocker_id = $1 AND blocked_id = $2
-            RETURNING id;
-        `;
-        const result = await db.query(query, [blockerId, blockedId]);
-        return result.rowCount > 0;
+        const result = await Block.findOneAndDelete({ blocker_id: blockerId, blocked_id: blockedId });
+        return !!result;
+    }
+
+    _calculateAge(dob) {
+        if (!dob) return null;
+        const diff = Date.now() - new Date(dob).getTime();
+        const age = new Date(diff); 
+        return Math.abs(age.getUTCFullYear() - 1970);
     }
 }
 

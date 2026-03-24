@@ -1,61 +1,63 @@
-const db = require('../config/db');
+const Message = require('../models/message.model');
 
-const saveMessage =async(matchId, senderId, messageText, mediaUrl = null, mediaType = null) => {
-    const query = `
-        INSERT INTO messages (match_id, sender_id, message_text, media_url, media_type)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING *;
-    `;
-    const result = await db.query(query, [matchId, senderId, messageText, mediaUrl, mediaType]);
-    return result.rows[0];
+const saveMessage = async (matchId, senderId, messageText, mediaUrl = null, mediaType = null) => {
+    const newMessage = new Message({
+        match_id: matchId,
+        sender_id: senderId,
+        message_text: messageText,
+        media_url: mediaUrl,
+        media_type: mediaType
+    });
+    return await newMessage.save();
 };
 
 const getMessagesByMatch = async (matchId, limit = 50, offset = 0) => {
-    const query = `
-        SELECT
-            m.id,
-            m.match_id,
-            m.sender_id,
-            m.message_text,
-            m.media_url,
-            m.media_type,
-            m.is_read,
-            m.created_at,
-            u.username AS sender_username
-        FROM messages m
-        JOIN users u ON u.id = m.sender_id
-        WHERE m.match_id = $1
-          AND m.is_deleted = FALSE
-          AND u.is_banned = FALSE
-        ORDER BY m.created_at DESC
-        LIMIT $2 OFFSET $3;
-    `;
-    const result = await db.query(query, [matchId, limit, offset]);
-    return result.rows;
+    const messages = await Message.find({
+        match_id: matchId,
+        is_deleted: false
+    })
+    .populate({
+        path: 'sender_id',
+        match: { is_banned: false },
+        select: 'username'
+    })
+    .sort({ created_at: -1 })
+    .skip(offset)
+    .limit(limit)
+    .lean();
+
+    // Filter out messages where sender is banned (populate returns null)
+    return messages.filter(m => m.sender_id).map(m => ({
+        id: m._id,
+        match_id: m.match_id,
+        sender_id: m.sender_id._id,
+        message_text: m.message_text,
+        media_url: m.media_url,
+        media_type: m.media_type,
+        is_read: m.is_read,
+        created_at: m.created_at,
+        sender_username: m.sender_id.username
+    }));
 };
 
 const markMessagesAsRead = async (matchId, receiverId) => {
-    const query = `
-        UPDATE messages
-        SET is_read = TRUE
-        WHERE match_id = $1
-          AND sender_id != $2
-          AND is_read = FALSE
-        RETURNING id;
-    `;
-    const result = await db.query(query, [matchId, receiverId]);
-    return result.rows;
+    const result = await Message.updateMany(
+        { 
+            match_id: matchId, 
+            sender_id: { $ne: receiverId },
+            is_read: false 
+        },
+        { $set: { is_read: true } }
+    );
+    return result.modifiedCount > 0;
 };
 
 const softDeleteMessage = async (messageId, senderId) => {
-    const query = `
-        UPDATE messages
-        SET is_deleted = TRUE
-        WHERE id = $1 AND sender_id = $2
-        RETURNING id;
-    `;
-    const result = await db.query(query, [messageId, senderId]);
-    return result.rows[0];
+    return await Message.findOneAndUpdate(
+        { _id: messageId, sender_id: senderId },
+        { $set: { is_deleted: true } },
+        { new: true }
+    );
 };
 
 module.exports = {
