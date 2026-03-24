@@ -57,7 +57,7 @@ const updateMyProfile = async (userId, profileData) => {
         };
     }
 
-    await User.findByIdAndUpdate(userId, { $set: update });
+    await User.findByIdAndUpdate(userId, { $set: update },{new:true});
     return { success: true };
 };
 
