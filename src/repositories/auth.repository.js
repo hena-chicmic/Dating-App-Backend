@@ -139,16 +139,13 @@ const resetPassword = async (email, newHashedPassword, otp) => {
         throw new Error("No active password reset request found.");
     }
 
-    // CHECK 1: Expiration
     if (new Date() > record.expires_at) {
         user.password_reset = undefined;
         await user.save();
         throw new Error("Reset OTP expired");
     }
 
-    // CHECK 2: Token Matching
     if (parseInt(otp) !== record.otp) {
-        // Increment attempts (optional logic, could add attempts to schema)
         throw new Error("Invalid OTP.");
     }
 
@@ -208,10 +205,8 @@ const googleLogin = async (email, uniqueUsername, hashedPassword, dummyDob, prof
         });
     }
 
-    // Ensure profile sub-document exists
     if (!user.profile) user.profile = {};
     
-    // Update profile photo if not already set or specifically provided
     if (profilePhotoUrl && !user.profile.profile_photo_url) {
         user.profile.profile_photo_url = profilePhotoUrl;
     }

@@ -2,7 +2,21 @@ require('../config/env');
 const connectDB = require('../config/db');
 const mongoose = require('mongoose');
 const User = require('../models/user.model');
+const Interest = require('../models/interest.model');
 const { hashPassword } = require('../utils/hash');
+
+const masterInterests = [
+    { name: 'Travel', category: 'Lifestyle' },
+    { name: 'Music', category: 'Arts' },
+    { name: 'Fitness', category: 'Health' },
+    { name: 'Reading', category: 'Hobbies' },
+    { name: 'Coffee', category: 'Food & Drink' },
+    { name: 'Gaming', category: 'Hobbies' },
+    { name: 'Movies', category: 'Arts' },
+    { name: 'Yoga', category: 'Health' },
+    { name: 'Art', category: 'Arts' },
+    { name: 'Technology', category: 'Career & Tech' }
+];
 
 const testUsers = [
     {
@@ -84,9 +98,14 @@ const seedTestUsers = async () => {
         await connectDB();
         console.log('Starting Mongoose test-user seed...');
 
-        // Clear existing test users
+        // Clear existing test users and interests
         await User.deleteMany({ email: /.*\.test@example\.com$/ });
-        console.log('Cleaned up previous test users.');
+        await Interest.deleteMany({});
+        console.log('Cleaned up previous test data.');
+
+        // Seed master interests
+        await Interest.insertMany(masterInterests);
+        console.log(`Successfully seeded ${masterInterests.length} master interests.`);
 
         for (const user of testUsers) {
             user.password_hash = await hashPassword(user.password);

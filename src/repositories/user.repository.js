@@ -1,5 +1,10 @@
+const mongoose = require('mongoose');
 const User = require('../models/user.model');
 const Block = require('../models/block.model');
+const Interest = require('../models/interest.model');
+const Match = require('../models/match.model');
+const Interaction = require('../models/interaction.model');
+const logger = require('../utils/logger');
 
 const getMyProfile = async (userId) => {
     const user = await User.findById(userId).lean();
@@ -89,7 +94,6 @@ const uploadMedia = async (userId, mediaData) => {
 
     await user.save();
     
-    // Return the last added media item (which now has an _id)
     return user.profile.media[user.profile.media.length - 1];
 };
 
@@ -105,7 +109,6 @@ const deleteMedia = async (userId, mediaId) => {
     const wasPrimary = mediaItem.is_primary;
     const mediaUrl = mediaItem.media_url;
 
-    // Cloudinary deletion logic
     const parts = mediaUrl.split('/');
     const lastPart = parts[parts.length - 1]; 
     const publicIdWithFolder = `dating-app/users/${lastPart.split('.')[0]}`; 
@@ -114,13 +117,11 @@ const deleteMedia = async (userId, mediaId) => {
         const cloudinary = require('../config/cloudinary');
         await cloudinary.uploader.destroy(publicIdWithFolder);
     } catch (err) {
-        // Log error but continue with DB deletion
+        logger.error("Cloudinary media deletion failed remotely, but continuing database sync:", err);
     }
 
-    // Remove from array
     user.profile.media.pull(mediaId);
 
-    // If was primary, set new primary
     if (wasPrimary && user.profile.media.length > 0) {
         user.profile.media[0].is_primary = true;
         user.profile.profile_photo_url = user.profile.media[0].media_url;
@@ -139,10 +140,8 @@ const setPrimaryMedia = async (userId, mediaId) => {
     const mediaItem = user.profile.media.id(mediaId);
     if (!mediaItem) throw new Error("Media not found");
 
-    // Reset all to false
     user.profile.media.forEach(m => m.is_primary = false);
     
-    // Set target to true
     mediaItem.is_primary = true;
     user.profile.profile_photo_url = mediaItem.media_url;
 
@@ -151,17 +150,10 @@ const setPrimaryMedia = async (userId, mediaId) => {
 };
 
 const getAllInterests = async () => {
-    // In Mongo, we might want a separate Interests collection if the list is dynamic
-    // For now, if we assume they are strings in the User model, we might just return a static list 
-    // or fetch unique interests from all users. 
-    // BUT the old code had an `interests` table. 
-    // To keep it simple and consistent with "Interests (Array of Strings)", 
-    // we'll return a sample or assume a helper provides them.
-    return [
-        { id: 1, name: 'Music' },
-        { id: 2, name: 'Travel' }
-        // ... this would ideally come from a specific 'Interest' model if required
-    ];
+    return await Interest.find({ is_active: true })
+        .select('name category -_id')
+        .sort({ category: 1, name: 1 })
+        .lean();
 };
 
 const getMyInterests = async (userId) => {
@@ -170,8 +162,14 @@ const getMyInterests = async (userId) => {
 };
 
 const updateMyInterests = async (userId, interestNames) => {
-    // Note: The service might send IDs or Names. 
-    // The plan said "Array of Strings instead of joining tables".
+    const validInterestsCount = await Interest.countDocuments({
+        name: { $in: interestNames },
+        is_active: true
+    });
+    if (validInterestsCount !== interestNames.length) {
+        throw new Error("One or more of the selected interests are invalid or unapproved by moderation.");
+    }
+
     await User.findByIdAndUpdate(userId, { interests: interestNames });
     return interestNames;
 };
@@ -214,16 +212,58 @@ const getUserProfile = async (requestingUserId, targetUserId) => {
 };
 
 const deactivateAccount = async (userId) => {
-    // In a real app, we might want to also deactivate matches/interactions here
-    // as per the old logic: DELETE FROM interactions WHERE user_id = $1 OR target_user_id = $1
-    // Developer 2 will handle Interaction and Match models, so we'll just deactivate the user.
-    await User.findByIdAndUpdate(userId, { is_active: false });
-    return { success: true };
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        await User.findByIdAndUpdate(userId, { is_active: false }, { session });
+        
+        await Match.updateMany(
+            { $or: [{ user1_id: userId }, { user2_id: userId }] },
+            { status: 'deactivated' },
+            { session }
+        );
+
+        await session.commitTransaction();
+        return { success: true };
+    } catch (error) {
+        await session.abortTransaction();
+        throw error;
+    } finally {
+        session.endSession();
+    }
 };
 
 const deleteAccount = async (userId) => {
-    await User.findByIdAndDelete(userId);
-    return { success: true };
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        await User.findByIdAndDelete(userId, { session });
+        
+        await Interaction.deleteMany(
+            { $or: [{ user_id: userId }, { target_user_id: userId }] },
+            { session }
+        );
+
+        await Match.deleteMany(
+            { $or: [{ user1_id: userId }, { user2_id: userId }] },
+            { session }
+        );
+
+        await Block.deleteMany(
+            { $or: [{ blocker_id: userId }, { blocked_id: userId }] },
+            { session }
+        );
+
+        await session.commitTransaction();
+        return { success: true };
+    } catch (error) {
+        await session.abortTransaction();
+        throw error;
+    } finally {
+        session.endSession();
+    }
 };
 
 module.exports = {

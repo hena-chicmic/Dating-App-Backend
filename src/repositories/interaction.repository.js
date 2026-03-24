@@ -18,7 +18,6 @@ class InteractionRepository {
     }
 
     async getSentLikes(userId) {
-        // Find users I blocked or who blocked me
         const blocks = await Block.find({
             $or: [{ blocker_id: userId }, { blocked_id: userId }]
         });
@@ -33,7 +32,7 @@ class InteractionRepository {
         })
         .populate({
             path: 'target_user_id',
-            match: { is_banned: false }, // Only fetch if not banned
+            match: { is_banned: false },
             select: 'username date_of_birth profile.profile_photo_url profile.location_city'
         })
         .sort({ created_at: -1 })

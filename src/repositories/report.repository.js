@@ -9,7 +9,6 @@ const createReportAndBlock = async (reporterId, reportedUserId, reason, descript
     session.startTransaction();
 
     try {
-        // 1. Create the Report
         const report = new Report({
             reporter_id: reporterId,
             reported_user_id: reportedUserId,
@@ -18,14 +17,12 @@ const createReportAndBlock = async (reporterId, reportedUserId, reason, descript
         });
         await report.save({ session });
 
-        // 2. Create the Block (Upsert)
         await Block.findOneAndUpdate(
             { blocker_id: reporterId, blocked_id: reportedUserId },
             { blocker_id: reporterId, blocked_id: reportedUserId },
             { upsert: true, new: true, session }
         );
 
-        // 3. Deactivate any existing Match
         await Match.updateMany(
             {
                 $or: [
@@ -37,7 +34,6 @@ const createReportAndBlock = async (reporterId, reportedUserId, reason, descript
             { session }
         );
 
-        // 4. Check report threshold for auto-ban
         const reportCount = await Report.distinct('reporter_id', { 
             reported_user_id: reportedUserId 
         }).session(session);
