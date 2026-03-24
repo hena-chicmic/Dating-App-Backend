@@ -1,10 +1,9 @@
 const Joi = require('joi');
 
 const createReportSchema = Joi.object({
-    reportedUserId: Joi.number()
-        .integer()
-        .positive()
-        .strict()
+    reportedUserId: Joi.string()
+        .hex()
+        .length(24)
         .required(),
 
     reason: Joi.string()
@@ -27,10 +26,9 @@ const createReportSchema = Joi.object({
 });
 
 const reportIdParamSchema = Joi.object({
-    id: Joi.number()
-        .integer()
-        .positive()
-        .strict()
+    id: Joi.string()
+        .hex()
+        .length(24)
         .required()
 });
 

@@ -38,23 +38,11 @@ const uploadMedia = async (userId, mediaData) => {
 };
 
 const deleteMedia = async (userId, mediaId) => {
-    const media = await userRepository.deleteMedia(userId, mediaId);
-    
-    if (media && media.media_url) {
-        try {
-            const urlParts = media.media_url.split('/');
-            const fileName = urlParts[urlParts.length - 1]; 
-            const publicId = fileName.split('.')[0]; 
-            
-            await cloudinary.uploader.destroy(publicId);
-        } catch (err) {
-            console.error('Failed to delete media from Cloudinary:', err.message);
-        }
-    }
+    const result = await userRepository.deleteMedia(userId, mediaId);
     
     await cache.del(`user:${userId}:profile`);
     await cache.del(`user:${userId}:public`);
-    return { success: true };
+    return result;
 };
 
 const setPrimaryMedia = async (userId, mediaId) => {

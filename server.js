@@ -9,8 +9,8 @@ const PORT = process.env.PORT || 3000;
 
 const startServer = async () => {
     try {
-        // Establish MongoDB NoSQL Connection
         await connectDB();
+        console.log('Connected to the database successfully.');
 
         // Initialize Redis early
         const redisClient = getRedisClient();

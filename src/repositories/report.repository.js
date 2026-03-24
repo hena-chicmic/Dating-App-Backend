@@ -1,81 +1,76 @@
-const db = require('../config/db');
+const { mongoose } = require('../config/db');
+const Report = require('../models/report.model');
+const Block = require('../models/block.model');
+const Match = require('../models/match.model');
+const User = require('../models/user.model');
 
 const createReportAndBlock = async (reporterId, reportedUserId, reason, description) => {
-    const client = await db.connect();
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
-        await client.query('BEGIN');
+        // 1. Create the Report
+        const report = new Report({
+            reporter_id: reporterId,
+            reported_user_id: reportedUserId,
+            reason,
+            description
+        });
+        await report.save({ session });
 
-        const reportQuery = `
-            INSERT INTO reports (reporter_id, reported_user_id, reason, description)
-            VALUES ($1, $2, $3, $4)
-            RETURNING *;
-        `;
-        const reportResult = await client.query(reportQuery, [reporterId, reportedUserId, reason, description]);
-        const report = reportResult.rows[0];
+        // 2. Create the Block (Upsert)
+        await Block.findOneAndUpdate(
+            { blocker_id: reporterId, blocked_id: reportedUserId },
+            { blocker_id: reporterId, blocked_id: reportedUserId },
+            { upsert: true, new: true, session }
+        );
 
-        const blockQuery = `
-            INSERT INTO blocks (blocker_id, blocked_id)
-            VALUES ($1, $2)
-            ON CONFLICT (blocker_id, blocked_id) DO NOTHING;
-        `;
-        await client.query(blockQuery, [reporterId, reportedUserId]);
+        // 3. Deactivate any existing Match
+        await Match.updateMany(
+            {
+                $or: [
+                    { user1_id: reporterId, user2_id: reportedUserId },
+                    { user1_id: reportedUserId, user2_id: reporterId }
+                ]
+            },
+            { status: 'deactivated' },
+            { session }
+        );
 
-        const matchQuery = `
-            UPDATE matches
-            SET is_active = FALSE
-            WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1);
-        `;
-        await client.query(matchQuery, [reporterId, reportedUserId]);
-
-        const countQuery = `
-            SELECT COUNT(DISTINCT reporter_id) AS "reporterCount"
-            FROM reports
-            WHERE reported_user_id = $1;
-        `;
-        const countResult = await client.query(countQuery, [reportedUserId]);
-        const count = parseInt(countResult.rows[0].reporterCount, 10);
-
-        if (count >= 5) {
-            await client.query(
-                `UPDATE users SET is_banned = TRUE, is_active = FALSE WHERE id = $1`,
-                [reportedUserId]
-            );
+        // 4. Check report threshold for auto-ban
+        const reportCount = await Report.distinct('reporter_id', { 
+            reported_user_id: reportedUserId 
+        }).session(session);
+        
+        if (reportCount.length >= 5) {
+            await User.findByIdAndUpdate(reportedUserId, {
+                is_banned: true,
+                is_active: false
+            }, { session });
         }
 
-        await client.query('COMMIT');
+        await session.commitTransaction();
         return report;
     } catch (error) {
-        await client.query('ROLLBACK');
+        await session.abortTransaction();
         throw error;
     } finally {
-        client.release();
+        session.endSession();
     }
 };
 
 const getReportById = async (reportId) => {
-    const query = `
-        SELECT r.*,
-               u1.username AS reporter_name,
-               u2.username AS reported_user_name
-        FROM reports r
-        JOIN users u1 ON r.reporter_id = u1.id
-        JOIN users u2 ON r.reported_user_id = u2.id
-        WHERE r.id = $1;
-    `;
-    const result = await db.query(query, [reportId]);
-    return result.rows[0];
+    return await Report.findById(reportId)
+        .populate('reporter_id', 'username')
+        .populate('reported_user_id', 'username')
+        .lean();
 };
 
 const getReportsByReporter = async (reporterId) => {
-    const query = `
-        SELECT r.*, u.username AS reported_user_name
-        FROM reports r
-        JOIN users u ON r.reported_user_id = u.id
-        WHERE r.reporter_id = $1
-        ORDER BY r.created_at DESC;
-    `;
-    const result = await db.query(query, [reporterId]);
-    return result.rows;
+    return await Report.find({ reporter_id: reporterId })
+        .populate('reported_user_id', 'username')
+        .sort({ createdAt: -1 })
+        .lean();
 };
 
 module.exports = {

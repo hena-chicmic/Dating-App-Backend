@@ -46,15 +46,15 @@ const updatePreferencesSchema = Joi.object({
 })
 
 const updateInterestsSchema = Joi.object({
-    interestIds: Joi.array().items(Joi.number().integer()).required()
+    interestIds: Joi.array().items(Joi.string()).required()
 });
 
 const mediaIdParamSchema = Joi.object({
-    mediaId: Joi.string().required()
+    mediaId: Joi.string().hex().length(24).required()
 });
 
 const targetUserIdParamSchema = Joi.object({
-    targetUserId: Joi.number().integer().required()
+    targetUserId: Joi.string().hex().length(24).required()
 });
 
 module.exports = {
