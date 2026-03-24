@@ -1,22 +1,28 @@
-const db = require('../config/db');
+const User = require('../models/user.model');
 
 class MaintenanceRepository {
     async cleanupExpiredRefreshTokens() {
-        const query = `DELETE FROM refresh_tokens WHERE expires_at < NOW()`;
-        const result = await db.query(query);
-        return result.rowCount;
+        const result = await User.updateMany(
+            {},
+            { $pull: { refresh_tokens: { expires_at: { $lt: new Date() } } } }
+        );
+        return result.modifiedCount;
     }
 
     async cleanupExpiredEmailVerifications() {
-        const query = `DELETE FROM email_verifications WHERE expires_at < NOW()`;
-        const result = await db.query(query);
-        return result.rowCount;
+        const result = await User.updateMany(
+            { 'otp.expires_at': { $lt: new Date() } },
+            { $unset: { otp: 1 } }
+        );
+        return result.modifiedCount;
     }
 
     async cleanupExpiredPasswordResets() {
-        const query = `DELETE FROM password_resets WHERE expires_at < NOW()`;
-        const result = await db.query(query);
-        return result.rowCount;
+        const result = await User.updateMany(
+            { 'password_reset.expires_at': { $lt: new Date() } },
+            { $unset: { password_reset: 1 } }
+        );
+        return result.modifiedCount;
     }
 }
 
