@@ -204,12 +204,13 @@ router.get("/my-interests", userController.getMyInterests);
  *           schema:
  *             type: object
  *             required:
- *               - interestIds
+ *               - interestNames
  *             properties:
- *               interestIds:
+ *               interestNames:
  *                 type: array
  *                 items:
- *                   type: integer
+ *                   type: string
+ *                 example: ["hiking", "music", "cooking"]
  *     responses:
  *       200:
  *         description: Interests updated

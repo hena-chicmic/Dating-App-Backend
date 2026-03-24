@@ -108,10 +108,6 @@ const forgotPassword = async (email) => {
 
     const userOrError = await authRepository.forgotPassword(email, otp)
 
-    if (userOrError instanceof Error) {
-        return userOrError
-    }
-
     await queuePasswordResetEmail(email, otp);
 
     return true;

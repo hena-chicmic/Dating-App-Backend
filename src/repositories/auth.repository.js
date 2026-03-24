@@ -119,7 +119,7 @@ const forgotPassword = async (email, otp) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-        return new Error("Invalid email");
+        throw new Error("No account found with that email address.");
     }
 
     user.password_reset = {
