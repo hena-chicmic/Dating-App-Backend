@@ -106,7 +106,8 @@ const login = async (data) => {
 const forgotPassword = async (email) => {
     const otp = Math.floor(100000 + Math.random() * 900000)
 
-    const userOrError = await authRepository.forgotPassword(email, otp)
+    // Throws if email not found — error propagates to next(error) in controller
+    await authRepository.forgotPassword(email, otp)
 
     await queuePasswordResetEmail(email, otp);
 
