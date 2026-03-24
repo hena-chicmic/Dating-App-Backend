@@ -1,20 +1,27 @@
-const { Pool } = require('pg');
+const mongoose = require('mongoose');
+const logger = require('../utils/logger');
 
-const pool = new Pool({
-    user: process.env.DB_USER || 'postgres',
-    host: process.env.DB_HOST || 'localhost',
-    database: process.env.DB_NAME || 'datingapp',
-    password: process.env.DB_PASSWORD || 'postgres',
-    port: process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 5432,
-});
-
-pool.on('error', (err, client) => {
-    console.error('Unexpected error on idle client', err);
-    process.exit(-1);
-});
-
-module.exports = {
-    query: (text, params) => pool.query(text, params),
-    connect: () => pool.connect(),
-    pool,
+const connectDB = async () => {
+    try {
+        // Use the connection string from env, fallback to localhost datingapp
+        const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/datingapp';
+        
+        await mongoose.connect(mongoURI);
+        logger.info('Connected to MongoDB successfully.');
+    } catch (error) {
+        logger.error(`Failed to connect to MongoDB: ${error.message}`);
+        // Exit process with failure
+        process.exit(1); 
+    }
 };
+
+// Listen for connection errors after initial connection
+mongoose.connection.on('error', err => {
+    logger.error('MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+    logger.warn('MongoDB disconnected. Mongoose will automatically try to reconnect.');
+});
+
+module.exports = connectDB;

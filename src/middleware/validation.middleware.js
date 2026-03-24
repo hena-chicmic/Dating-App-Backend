@@ -2,11 +2,17 @@ const Joi = require('joi');
 
 const validate = (schema, source = 'body') => {
     return (req, res, next) => {
-        const { error, value } = schema.validate(req[source], {
+        const options = {
             abortEarly: false,
             allowUnknown: true,
             stripUnknown: true
-        });
+        };
+
+        if (req.user && req.user.user_id) {
+            options.context = { userId: req.user.user_id };
+        }
+
+        const { error, value } = schema.validate(req[source], options);
 
         if (error) {
             const errorMessages = error.details.map(detail => detail.message);

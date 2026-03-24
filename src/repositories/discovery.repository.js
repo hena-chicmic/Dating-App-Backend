@@ -1,101 +1,116 @@
-const db = require('../config/db');
+const User = require('../models/user.model');
+const Interaction = require('../models/interaction.model');
+const Block = require('../models/block.model');
 const { DISCOVERY } = require('../utils/constants');
 
 class DiscoveryRepository {
     async findRecommendations(userId, limit = DISCOVERY.DEFAULT_PAGE_SIZE, offset = 0) {
+        const user = await User.findById(userId).lean();
+        if (!user) throw new Error("User preferences not found");
 
-        const userPrefsResult = await db.query(
-            `SELECT u.interested_in, u.min_preferred_age, u.max_preferred_age, p.latitude, p.longitude
-             FROM users u
-             LEFT JOIN user_profiles p ON u.id = p.user_id
-             WHERE u.id = $1`,
-            [userId]
+        const prefs = user.preferences || {};
+        const profile = user.profile || {};
+        
+        // 1. Get list of users the current user already interacted with
+        const interactions = await Interaction.find({ user_id: userId }).select('target_user_id').lean();
+        const interactedIds = interactions.map(i => i.target_user_id);
+
+        // 2. Get blocked users
+        const blocks = await Block.find({
+            $or: [{ blocker_id: userId }, { blocked_id: userId }]
+        }).lean();
+        const blockedIds = blocks.map(b => 
+            b.blocker_id.toString() === userId.toString() ? b.blocked_id : b.blocker_id
         );
 
-        if (!userPrefsResult.rows.length) {
-            throw new Error("User preferences not found");
+        // Compile exclusion list
+        const excludeIds = [...interactedIds, ...blockedIds, userId];
+
+        // Prepare match query
+        const matchQuery = {
+            _id: { $nin: excludeIds },
+            is_active: true,
+            is_banned: false,
+            'profile.profile_photo_url': { $exists: true, $ne: null },
+            'profile.bio': { $exists: true, $ne: '' }
+        };
+
+        // Gender filter
+        if (prefs.preferred_gender && prefs.preferred_gender !== 'both') {
+            matchQuery.gender = prefs.preferred_gender;
         }
-        const prefs = userPrefsResult.rows[0];
 
-        // Use null instead of 0 for coordinates to indicate missing location
-        const searchLat = prefs.latitude ?? null;
-        const searchLong = prefs.longitude ?? null;
+        // Age filter
+        if (prefs.preferred_age_min && prefs.preferred_age_max) {
+            const today = new Date();
+            const minDate = new Date(today.getFullYear() - prefs.preferred_age_max - DISCOVERY.AGE_FUDGE_FACTOR, today.getMonth(), today.getDate());
+            const maxDate = new Date(today.getFullYear() - prefs.preferred_age_min + DISCOVERY.AGE_FUDGE_FACTOR, today.getMonth(), today.getDate());
+            matchQuery.date_of_birth = { $gte: minDate, $lte: maxDate };
+        }
 
-        const query = `
-            SELECT
-                u.id,
-                u.username,
-                EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) as age,
-                u.bio,
-                p.profile_photo_url,
-                p.location_city,
-                p.location_country,
-                COUNT(ui2.interest_id) AS common_interests,
-                CASE 
-                    WHEN $7::double precision IS NOT NULL AND $8::double precision IS NOT NULL 
-                    THEN (ST_Distance(p.location_geog, ST_SetSRID(ST_MakePoint($8, $7), 4326)::geography) / 1000.0) 
-                    ELSE NULL 
-                END AS distance_km
-            FROM users u
-            LEFT JOIN user_profiles p ON u.id = p.user_id
-            LEFT JOIN user_interests ui1 ON u.id = ui1.user_id
-            LEFT JOIN user_interests ui2 ON ui1.interest_id = ui2.interest_id AND ui2.user_id = $1
-            WHERE u.id != $1
-            AND u.is_active=true
-            AND u.is_banned=false
-            AND ($2 = 'both' OR u.gender = $2)
+        const pipeline = [];
 
-            AND EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN ($3 - ${DISCOVERY.AGE_FUDGE_FACTOR}) AND ($4 + ${DISCOVERY.AGE_FUDGE_FACTOR})
-            AND p.location_geog IS NOT NULL
+        // Geospatial search if user has valid coordinates
+        const hasCoords = profile.location && profile.location.coordinates && profile.location.coordinates.length === 2;
+        if (hasCoords) {
+            pipeline.push({
+                $geoNear: {
+                    near: {
+                        type: 'Point',
+                        coordinates: profile.location.coordinates // [longitude, latitude]
+                    },
+                    distanceField: 'distance_km',
+                    maxDistance: (prefs.max_distance_km || DISCOVERY.MAX_DISTANCE_KM) * 1000,
+                    distanceMultiplier: 0.001,
+                    spherical: true,
+                    query: matchQuery // Apply the filters early inside geoNear
+                }
+            });
+        } else {
+            pipeline.push({ $match: matchQuery });
+        }
 
-            -- Only filter by distance if user coordinates are available
-            AND (
-                ($7::double precision IS NULL OR $8::double precision IS NULL)
-                OR ST_DWithin(p.location_geog, ST_SetSRID(ST_MakePoint($8, $7), 4326)::geography, $9 * 1000)
-            )
-            AND p.profile_photo_url IS NOT NULL 
-            AND p.bio IS NOT NULL AND p.bio != ''
+        // Project fields to match the old SQL output structure closely
+        pipeline.push({
+            $addFields: {
+                common_interests: {
+                    $size: {
+                        $setIntersection: [ { $ifNull: [ "$interests", [] ] }, { $ifNull: [ user.interests, [] ] } ]
+                    }
+                }
+            }
+        });
 
-            AND NOT EXISTS (
-                SELECT 1 FROM interactions i
-                WHERE i.user_id = $1 AND i.target_user_id = u.id
-            )
-            AND NOT EXISTS (
-                SELECT 1 FROM blocks b
-                WHERE (b.blocker_id = $1 AND b.blocked_id = u.id)
-                   OR (b.blocker_id = u.id AND b.blocked_id = $1)
-            )
-            GROUP BY u.id, p.profile_photo_url, p.location_city, p.location_country, p.location_geog
-            ORDER BY
-                -- Priority 0 for nearby if coords exist, otherwise everyone is Priority 0
-                CASE 
-                    WHEN $7::double precision IS NOT NULL AND $8::double precision IS NOT NULL 
-                    THEN (CASE WHEN (ST_Distance(p.location_geog, ST_SetSRID(ST_MakePoint($8, $7), 4326)::geography) / 1000.0) <= ${DISCOVERY.NEARBY_RADIUS_KM} THEN 0 ELSE 1 END)
-                    ELSE 0 
-                END ASC,
+        // Add sorting (prioritize nearby, then common interests, then age)
+        const sortStage = { common_interests: -1, created_at: -1 };
+        if (hasCoords) {
+            sortStage.distance_km = 1; 
+        }
+        
+        pipeline.push({ $sort: sortStage });
+        pipeline.push({ $skip: offset });
+        pipeline.push({ $limit: limit });
 
-                CASE WHEN EXTRACT(YEAR FROM age(CURRENT_DATE, u.date_of_birth)) BETWEEN $3 AND $4 THEN 0 ELSE 1 END ASC,
+        const results = await User.aggregate(pipeline);
 
-                common_interests DESC,
-                distance_km ASC NULLS LAST,
-                u.created_at DESC
-            LIMIT $5 OFFSET $6
-        `;
+        return results.map(u => ({
+            id: u._id,
+            username: u.username,
+            age: this._calculateAge(u.date_of_birth),
+            bio: u.profile.bio,
+            profile_photo_url: u.profile.profile_photo_url,
+            location_city: u.profile.location_city,
+            location_country: u.profile.location_country,
+            common_interests: u.common_interests,
+            distance_km: u.distance_km || null
+        }));
+    }
 
-        const values = [
-            userId,
-            prefs.interested_in,
-            prefs.min_preferred_age,
-            prefs.max_preferred_age,
-            limit,
-            offset,
-            searchLat,
-            searchLong,
-            DISCOVERY.MAX_DISTANCE_KM
-        ];
-
-        const result = await db.query(query, values);
-        return result.rows;
+    _calculateAge(dob) {
+        if (!dob) return null;
+        const diff = Date.now() - new Date(dob).getTime();
+        const age = new Date(diff); 
+        return Math.abs(age.getUTCFullYear() - 1970);
     }
 }
 

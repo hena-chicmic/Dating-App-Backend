@@ -1,53 +1,56 @@
-const db = require('../config/db');
+const CallLog = require('../models/callLog.model');
 
 class CallRepository {
     async createCallLog({ matchId, callerId, receiverId }) {
-        const query = `
-            INSERT INTO call_logs (match_id, caller_id, receiver_id, status)
-            VALUES ($1, $2, $3, 'initiated')
-            RETURNING id;
-        `;
-        const result = await db.query(query, [matchId, callerId, receiverId]);
-        return result.rows[0].id;
+        const callLog = new CallLog({
+            match_id: matchId,
+            caller_id: callerId,
+            receiver_id: receiverId,
+            status: 'initiated'
+        });
+        const savedLog = await callLog.save();
+        return savedLog._id;
     }
 
     async updateCallStatus(callId, status) {
-        let setClause = 'status = $1';
+        const updateData = { status };
         
         if (status === 'ongoing') {
-            setClause += ', started_at = CURRENT_TIMESTAMP';
-        } else if (status === 'completed' || status === 'missed' || status === 'rejected') {
-            setClause += ', ended_at = CURRENT_TIMESTAMP';
-            if (status === 'completed') {
-                setClause += ', duration = CAST(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - started_at)) AS INTEGER)';
-            }
+            updateData.started_at = new Date();
+        } else if (['completed', 'missed', 'rejected'].includes(status)) {
+            updateData.ended_at = new Date();
         }
 
-        const query = `
-            UPDATE call_logs
-            SET ${setClause}
-            WHERE id = $2
-            RETURNING *;
-        `;
-        const result = await db.query(query, [status, callId]);
-        return result.rows[0];
+        const callLog = await CallLog.findByIdAndUpdate(
+            callId, 
+            { $set: updateData }, 
+            { new: true }
+        );
+
+        // If completed, calculate duration natively since started_at is now available
+        if (status === 'completed' && callLog.started_at && callLog.ended_at) {
+            const durationSecs = Math.floor((callLog.ended_at - callLog.started_at) / 1000);
+            callLog.duration = durationSecs;
+            await callLog.save();
+        }
+
+        return callLog;
     }
 
     async getCallHistory(matchId, limit = 50, offset = 0) {
-        const query = `
-            SELECT 
-                cl.*,
-                u.username as caller_name,
-                r.username as receiver_name
-            FROM call_logs cl
-            JOIN users u ON cl.caller_id = u.id
-            JOIN users r ON cl.receiver_id = r.id
-            WHERE cl.match_id = $1
-            ORDER BY cl.started_at DESC
-            LIMIT $2 OFFSET $3;
-        `;
-        const result = await db.query(query, [matchId, limit, offset]);
-        return result.rows;
+        const logs = await CallLog.find({ match_id: matchId })
+            .populate('caller_id', 'username')
+            .populate('receiver_id', 'username')
+            .sort({ created_at: -1 })
+            .skip(offset)
+            .limit(limit)
+            .lean();
+        
+        return logs.map(log => ({
+            ...log,
+            caller_name: log.caller_id?.username,
+            receiver_name: log.receiver_id?.username
+        }));
     }
 }
 
