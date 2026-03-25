@@ -4,7 +4,7 @@ An advanced, scalable, and highly performant backend microservice architecture f
 
 ## 🚀 Tech Stack
 - **Core Framework:** Node.js, Express.js
-- **Database:** PostgreSQL (with raw `pg` pool queries for maximum performance via Layered Architecture)
+- **Database:** MongoDB (using Mongoose for schema enforcement and advanced `$geoNear` aggregation feeds)
 - **In-Memory Store / Caching:** Redis
 - **Real-time Engine:** Socket.io (Chat, WebRTC Calls, Online Presence)
 - **Message Broker / Background Jobs:** BullMQ (Email dispatches, Heavy Matching algorithms, Notifications)
@@ -49,7 +49,7 @@ Native Cloudinary integration with `multer` supporting optimized profile photos 
 
 ### Prerequisites
 - Node.js (v18+)
-- PostgreSQL (v14+)
+- MongoDB (Running locally or via Atlas)
 - Redis Server (Running locally or in Docker)
 
 ### 1. Clone and Install
@@ -63,11 +63,7 @@ npm install
 Create a `.env` in the root directory mirroring the necessary configuration constraints:
 ```env
 PORT=3000
-DB_HOST=localhost
-DB_USER=postgres
-DB_PASSWORD=yourpassword
-DB_NAME=datingapp
-DB_PORT=5432
+MONGO_URI=mongodb://localhost:27017/datingapp
 
 REDIS_URL=redis://localhost:6379
 
@@ -89,10 +85,7 @@ GOOGLE_CLIENT_ID=your_google_id
 
 ### 3. Database Initialization
 ```bash
-# Execute structural migrations to build the tables
-npm run migrate
-
-# (Optional) Seed the database with fake testing profiles
+# Seed the database with fake testing profiles (automatically drops old collections)
 npm run seed
 ```
 
